@@ -3,7 +3,7 @@ import { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { PG_CONNECTION } from "../constants.js";
 import * as schema from "../drizzle/schema.js";
 import { UploadAudioDTO, AudioModel, AudioExcFilePathDTO } from "./types.js";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { PathLike } from "fs";
 import { unlink } from "fs/promises";
 
@@ -13,9 +13,14 @@ export interface IAudioService {
     delete(audioId: number, filePath: PathLike): Promise<boolean>;
     removeFile(filePath: PathLike): Promise<void>;
     findAudioById(id: number): Promise<AudioModel | undefined>;
+    findMyAudio(
+        audioId: number,
+        uploaderId: string,
+    ): Promise<AudioModel | undefined>;
     editLike(audioId: number, num: number): Promise<boolean>;
     findAll(): Promise<AudioExcFilePathDTO[]>;
     findAllByUserId(userId: string): Promise<AudioExcFilePathDTO[]>;
+    audiosQuerySearch(query: string): Promise<AudioExcFilePathDTO[]>;
 }
 export const SAudioService = Symbol("IAuthService");
 
@@ -24,6 +29,20 @@ export class AudioService implements IAudioService {
         @Inject(PG_CONNECTION)
         private readonly db: NodePgDatabase<typeof schema>,
     ) {}
+
+    public async audiosQuerySearch(query: string): Promise<any> {
+        try {
+            const res = await this.db.execute(
+                sql.raw(
+                    `SELECT id, title, duration, creator, publish_at AS publishAt, likes, uploader_id AS uploaderId FROM audios WHERE title ILIKE '%${query.trim()}%' OR creator ILIKE '%${query.trim()}%';`,
+                ),
+            );
+            return res.rows;
+        } catch (error) {
+            console.error(`${this.audiosQuerySearch.name} error`, error);
+            return [];
+        }
+    }
 
     async findAll(): Promise<AudioExcFilePathDTO[]> {
         try {
@@ -84,6 +103,25 @@ export class AudioService implements IAudioService {
         }
     }
 
+    async findMyAudio(
+        audioId: number,
+        uploaderId: string,
+    ): Promise<AudioModel | undefined> {
+        try {
+            const res = await this.db.query.audios.findFirst({
+                where: and(
+                    eq(schema.audios.id, audioId),
+                    eq(schema.audios.uploaderId, uploaderId),
+                ),
+            });
+
+            return res;
+        } catch (error) {
+            console.error(`${this.findAudioById.name} error`, error);
+            return undefined;
+        }
+    }
+
     async upload(data: UploadAudioDTO): Promise<AudioModel | undefined> {
         try {
             const res = await this.db
@@ -131,13 +169,11 @@ export class AudioService implements IAudioService {
         try {
             const res = await this.db.transaction(async (tx) => {
                 try {
-                    const op = tx
+                    const res = await tx
                         .delete(schema.audios)
                         .where(eq(schema.audios.id, audioId));
-                    const [res, _] = await Promise.all([
-                        op,
-                        this.removeFile(filePath),
-                    ]);
+
+                    await this.removeFile(filePath);
 
                     return res.rowCount > 0;
                 } catch (error) {

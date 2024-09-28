@@ -106,7 +106,7 @@ export class PlaylistService implements IPlaylistService {
                         .values({
                             playlistId: playlistId,
                             audioId: audioId,
-                        });
+                        } as any);
 
                     const updatePlaylistAudiosCount = tx.execute(sql`
                         UPDATE playlist_metadata

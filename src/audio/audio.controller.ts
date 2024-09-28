@@ -2,7 +2,6 @@ import {
     Controller,
     Delete,
     Get,
-    HttpException,
     HttpStatus,
     Inject,
     Patch,
@@ -48,6 +47,24 @@ export class AudioController {
         }
     }
 
+    @Get("search")
+    public async audiosQuerySearch(
+        @Req()
+        req: Request<never, never, never, { query: string }>,
+        @Res() res: Response,
+    ): Promise<Response> {
+        try {
+            const result = await this.audioSvc.audiosQuerySearch(
+                req.query.query ?? "",
+            );
+
+            return res.status(HttpStatus.OK).json({ audios: result });
+        } catch (error) {
+            console.error(`${this.audiosQuerySearch.name} error`, error);
+            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
+        }
+    }
+
     @UseGuards(AuthGuard)
     @Get("my-audio")
     public async findAllMyAudio(
@@ -64,7 +81,6 @@ export class AudioController {
         }
     }
 
-    //TODO: IMPLEMENTS STREAMING FILE
     @Get("play/:audioId")
     public async playAudio(
         @Req() req: Request<{ audioId: number }, never, never, never>,
@@ -116,7 +132,7 @@ export class AudioController {
     }
 
     @UseGuards(AuthGuard)
-    @Post()
+    @Post("")
     @UseInterceptors(FileInterceptor("file"))
     public async upload(
         @Req()
@@ -197,8 +213,9 @@ export class AudioController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            let audioFromDb = await this.audioSvc.findAudioById(
+            let audioFromDb = await this.audioSvc.findMyAudio(
                 req.params.audioId,
+                req.user.userId,
             );
             if (!audioFromDb) {
                 return res.status(HttpStatus.NOT_FOUND).send("Audio not found");
@@ -285,7 +302,10 @@ export class AudioController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const a = await this.audioSvc.findAudioById(req.params.audioId);
+            const a = await this.audioSvc.findMyAudio(
+                req.params.audioId,
+                req.user.userId,
+            );
             if (!a) {
                 return res.status(HttpStatus.NOT_FOUND).send("Audio not found");
             }
@@ -301,7 +321,7 @@ export class AudioController {
             }
 
             return res.status(HttpStatus.OK).json({
-                audio: result,
+                message: "Deleting file success",
             });
         } catch (error) {
             console.error(`${this.deleteMyAudio.name} error`, error);

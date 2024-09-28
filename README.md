@@ -1,85 +1,51 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Overview
+This is a Nest Audio Playlist Playground API. Build with NestJS (Typescript), DrizzleORM,
+PostgreSQL.
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+# Feature
+1. User can perform CRUD for their account
+	-- Login and get JWT for authentication
+2. User can perform CRUD for audio  
+    -- Create (Upload) an audio  
+    -- Read audio all; by query; by audio id; play an audio
+    -- Update audio metadata; title/creator  
+    -- Like/Dislike an audio
+    -- Delete audio
+3. User can perform CRUD for playlist  
+    -- Create playlist  
+    -- Add audio to a playlist  
+    -- Read all user playlist  
+    -- Read all audios inside a playlist  
+    -- Update playlist metadata  
+    -- Remove an audio from a playlist  
+    -- Delete a playlist
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ npm install
+# How To Run
+Clone this project and create a `.env` file contains  
 ```
-
-## Compile and run the project
-
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+PORT=
+DB_URI=
+JWT_SECRET=
 ```
+Test this API by importing Postman collection within this project to your Postman app.
 
-## Run tests
+# System Design
+## Database Design
+<a href="https://ibb.co.com/QJ7CSj3"><img src="https://i.ibb.co.com/nwqnd8N/nest-audio-playlist-db-design.png" alt="nest-audio-playlist-db-design" border="0"></a>
 
-```bash
-# unit tests
-$ npm run test
+## Project Architecture
+<a href="https://ibb.co.com/g68pV7x"><img src="https://i.ibb.co.com/b7VZJ3k/nest-audio-playlist-src-file-tree.png" alt="nest-audio-playlist-src-file-tree" border="0"></a>
 
-# e2e tests
-$ npm run test:e2e
+# Others
+## Project Patterns
+1. Folder Structure
+This project uses the default NestJS folder structure which is Domain Driven Design (DDD), as we can see at image above there are 3 domains User, Audio, and Playlist.
+I personally like this pattern because it is convenient to work with even as a team. Also I think this structure is kinda easy to do testing.
+Another folder structure that I like is Layered Architecture, like this:
+<a href="https://imgbb.com/"><img src="https://i.ibb.co.com/sWTCc6v/gojobber-user-file-tree.png" alt="gojobber-user-file-tree" border="0"></a>  
+This is a traditional architecture and I still like it same as DDD before.
 
-# test coverage
-$ npm run test:cov
-```
+2. Pattern inside code
+I am fine with Object Oriented Programming (OOP) or Functional Programming (FP) or even using both pattern. One thing I try to apply it in my code is [Strategy Pattern](https://en.wikipedia.org/wiki/Strategy_pattern).  In my case I use Strategy Pattern as to always use the interfaces rather than directly use the class implementation, I like composition over inheritance.
 
-## Resources
 
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).

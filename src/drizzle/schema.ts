@@ -8,7 +8,6 @@ import {
     boolean,
     timestamp,
     index,
-    primaryKey,
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable(
@@ -75,28 +74,18 @@ export const playlistMetadata = pgTable(
     },
 );
 
-export const usersPlaylists = pgTable(
-    "users_playlists",
-    {
-        playlistId: integer("playlist_id")
-            .notNull()
-            .references(() => playlistMetadata.id, {
-                onDelete: "cascade",
-                onUpdate: "cascade",
-            }),
-        audioId: integer("audio_id")
-            .notNull()
-            .references(() => audios.id, {
-                onDelete: "set null",
-                onUpdate: "cascade",
-            }),
-    },
-    (self) => {
-        return {
-            pk: primaryKey({ columns: [self.playlistId, self.audioId] }),
-        };
-    },
-);
+export const usersPlaylists = pgTable("users_playlists", {
+    playlistId: integer("playlist_id")
+        .notNull()
+        .references(() => playlistMetadata.id, {
+            onDelete: "cascade",
+            onUpdate: "cascade",
+        }),
+    audioId: integer("audio_id").references(() => audios.id, {
+        onDelete: "set null",
+        onUpdate: "cascade",
+    }),
+});
 
 export const audiosRelations = relations(audios, ({ one, many }) => {
     return {
