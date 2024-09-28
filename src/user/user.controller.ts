@@ -227,7 +227,7 @@ export class UserController {
                 return res.status(HttpStatus.NOT_FOUND).send("User not found");
             }
 
-            return res.status(HttpStatus.NO_CONTENT);
+            return res.sendStatus(HttpStatus.NO_CONTENT);
         } catch (error) {
             console.error(`${this.deleteMyAccount.name} error`, error);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");

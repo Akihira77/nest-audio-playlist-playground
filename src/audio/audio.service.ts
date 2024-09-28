@@ -9,7 +9,10 @@ import { unlink } from "fs/promises";
 
 export interface IAudioService {
     upload(data: UploadAudioDTO): Promise<AudioModel | undefined>;
-    update(data: UploadAudioDTO | AudioModel): Promise<AudioModel | undefined>;
+    update(
+        audioId: number,
+        data: UploadAudioDTO | AudioModel,
+    ): Promise<AudioModel | undefined>;
     delete(audioId: number, filePath: PathLike): Promise<boolean>;
     removeFile(filePath: PathLike): Promise<void>;
     findAudioById(id: number): Promise<AudioModel | undefined>;
@@ -144,6 +147,7 @@ export class AudioService implements IAudioService {
     }
 
     async update(
+        audioId: number,
         data: UploadAudioDTO | AudioModel,
     ): Promise<AudioModel | undefined> {
         try {
@@ -156,6 +160,7 @@ export class AudioService implements IAudioService {
                     file_path: data.file_path,
                     publishAt: data.publishAt,
                 })
+                .where(eq(schema.audios.id, audioId))
                 .returning();
 
             return res[0];

@@ -35,7 +35,7 @@ export class UserService implements IUserService {
 
             return res.rowCount > 0;
         } catch (error) {
-            console.error(`${this.findAll.name} error`, error);
+            console.error(`${this.delete.name} error`, error);
             return false;
         }
     }

@@ -243,7 +243,10 @@ export class AudioController {
                 writeFile(filePath, file.buffer);
             }
 
-            const result = await this.audioSvc.update(audioFromDb);
+            const result = await this.audioSvc.update(
+                req.params.audioId,
+                audioFromDb,
+            );
             if (!result) {
                 return res
                     .status(HttpStatus.BAD_REQUEST)
@@ -286,7 +289,6 @@ export class AudioController {
             return res.status(HttpStatus.OK).json({
                 audio: {
                     ...audio,
-                    likes: audio.likes + num,
                 },
             });
         } catch (error) {
