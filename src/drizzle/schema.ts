@@ -19,9 +19,9 @@ export const users = pgTable(
         password: text("password").notNull(),
         createdAt: timestamp("created_at").notNull().defaultNow(),
     },
-    (table) => {
+    (self) => {
         return {
-            emailIdx: index("email_idx").on(table.email),
+            emailIdx: index("email_idx").on(self.email),
         };
     },
 );
@@ -43,11 +43,11 @@ export const audios = pgTable(
                 onDelete: "cascade",
             }),
     },
-    (table) => {
+    (self) => {
         return {
-            titleIdx: index("title_idx").on(table.title),
-            creatorIdx: index("creator_idx").on(table.creator),
-            uploaderIdx: index("uploader_idx").on(table.uploaderId),
+            titleIdx: index("title_idx").on(self.title),
+            creatorIdx: index("creator_idx").on(self.creator),
+            uploaderIdx: index("uploader_idx").on(self.uploaderId),
         };
     },
 );
@@ -67,9 +67,9 @@ export const playlistMetadata = pgTable(
         audioCount: integer("audio_count").notNull(),
         createdAt: timestamp("created_at").notNull().defaultNow(),
     },
-    (table) => {
+    (self) => {
         return {
-            nameIdx: index("name_idx").on(table.name),
+            nameIdx: index("name_idx").on(self.name),
         };
     },
 );

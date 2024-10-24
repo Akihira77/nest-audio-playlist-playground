@@ -3,7 +3,7 @@ import { NodePgDatabase } from "drizzle-orm/node-postgres";
 import { PG_CONNECTION } from "../constants.js";
 import * as schema from "../drizzle/schema.js";
 import { UploadAudioDTO, AudioModel, AudioExcFilePathDTO } from "./types.js";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ilike, or, sql } from "drizzle-orm";
 import { PathLike } from "fs";
 import { unlink } from "fs/promises";
 
@@ -33,14 +33,21 @@ export class AudioService implements IAudioService {
         private readonly db: NodePgDatabase<typeof schema>,
     ) {}
 
-    public async audiosQuerySearch(query: string): Promise<any> {
+    public async audiosQuerySearch(
+        query: string,
+    ): Promise<AudioExcFilePathDTO[]> {
         try {
-            const res = await this.db.execute(
-                sql.raw(
-                    `SELECT id, title, duration, creator, publish_at AS publishAt, likes, uploader_id AS uploaderId FROM audios WHERE title ILIKE '%${query.trim()}%' OR creator ILIKE '%${query.trim()}%';`,
+            const res = await this.db.query.audios.findMany({
+                where: or(
+                    ilike(schema.audios.title, `%${query.trim()}%`),
+                    ilike(schema.audios.creator, `%${query.trim()}%`),
                 ),
-            );
-            return res.rows;
+                columns: {
+                    file_path: false,
+                },
+            });
+
+            return res;
         } catch (error) {
             console.error(`${this.audiosQuerySearch.name} error`, error);
             return [];

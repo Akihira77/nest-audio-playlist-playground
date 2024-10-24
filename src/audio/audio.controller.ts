@@ -105,7 +105,7 @@ export class AudioController {
                 "Content-Type": "audio/mpeg",
             };
 
-            res.writeHead(206, head); // 206 for partial content
+            res.writeHead(HttpStatus.PARTIAL_CONTENT, head);
             file.pipe(res);
         } catch (error) {
             console.error(`${this.playAudio.name} error`, error);

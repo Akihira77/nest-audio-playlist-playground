@@ -195,13 +195,6 @@ export class PlaylistService implements IPlaylistService {
                 })
                 .from(schema.usersPlaylists)
                 .leftJoin(
-                    schema.playlistMetadata,
-                    eq(
-                        schema.usersPlaylists.playlistId,
-                        schema.playlistMetadata.id,
-                    ),
-                )
-                .leftJoin(
                     schema.audios,
                     eq(schema.usersPlaylists.audioId, schema.audios.id),
                 )

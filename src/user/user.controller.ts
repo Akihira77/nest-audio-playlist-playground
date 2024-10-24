@@ -46,7 +46,7 @@ export class UserController {
                 req.params.id,
             );
             if (user == null) {
-                return res.status(404).send("User not found");
+                return res.status(HttpStatus.NOT_FOUND).send("User not found");
             }
 
             return res.status(HttpStatus.OK).json({ user });
@@ -76,7 +76,7 @@ export class UserController {
                     .send("Error creating account");
             }
 
-            return res.status(201).json({ user: result });
+            return res.status(HttpStatus.CREATED).json({ user: result });
         } catch (error) {
             console.error(`${this.register.name} error`, error);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
@@ -94,7 +94,7 @@ export class UserController {
                 req.user.userId,
             );
             if (!user) {
-                return res.status(404).send("User not found");
+                return res.status(HttpStatus.NOT_FOUND).send("User not found");
             }
 
             return res.status(HttpStatus.OK).json({ user });
@@ -112,7 +112,7 @@ export class UserController {
         try {
             const u = await this.userSvc.findRawUserByEmail(req.body.email);
             if (!u) {
-                return res.status(404).send("User not found");
+                return res.status(HttpStatus.NOT_FOUND).send("User not found");
             }
 
             if (!(await matchingString(req.body.password, u.password))) {
@@ -135,7 +135,7 @@ export class UserController {
             );
 
             res.cookie("token", token);
-            return res.status(201).json({ user: u, token: token });
+            return res.status(HttpStatus.OK).json({ user: u, token: token });
         } catch (error) {
             console.error(`${this.login.name} error`, error);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
@@ -188,7 +188,7 @@ export class UserController {
 
             const u = await this.userSvc.findRawUserById(req.user.userId);
             if (!u) {
-                return res.status(404).send("User not found");
+                return res.status(HttpStatus.NOT_FOUND).send("User not found");
             }
 
             if (!(await matchingString(req.body.password, u.password))) {
