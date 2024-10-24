@@ -13,6 +13,6 @@ async function bootstrap() {
     const port = process.env.PORT;
     await app.listen(Number(port));
 
-    console.log(`Nest App run on ${port}`);
+    console.log(`Nest App run on ${await app.getUrl()}`);
 }
 bootstrap();

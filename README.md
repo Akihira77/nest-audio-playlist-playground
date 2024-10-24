@@ -3,13 +3,13 @@ This is a Nest Audio Playlist Playground API. Build with NestJS (Typescript), Dr
 PostgreSQL.
 
 # Feature
-1. User can perform CRUD for their account
+1. User can perform CRUD for their account  
 	-- Login and get JWT for authentication
 2. User can perform CRUD for audio  
     -- Create (Upload) an audio  
-    -- Read audio all; by query; by audio id; play an audio
+    -- Read audio all; by query; by audio id; play an audio  
     -- Update audio metadata; title/creator  
-    -- Like/Dislike an audio
+    -- Like/Dislike an audio  
     -- Delete audio
 3. User can perform CRUD for playlist  
     -- Create playlist  

@@ -287,9 +287,7 @@ export class AudioController {
             }
 
             return res.status(HttpStatus.OK).json({
-                audio: {
-                    ...audio,
-                },
+                audio: audio,
             });
         } catch (error) {
             console.error(`${this.editLike.name} error`, error);

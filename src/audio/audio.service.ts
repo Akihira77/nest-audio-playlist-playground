@@ -25,7 +25,7 @@ export interface IAudioService {
     findAllByUserId(userId: string): Promise<AudioExcFilePathDTO[]>;
     audiosQuerySearch(query: string): Promise<AudioExcFilePathDTO[]>;
 }
-export const SAudioService = Symbol("IAuthService");
+export const SAudioService = Symbol("IAudioService");
 
 export class AudioService implements IAudioService {
     constructor(
