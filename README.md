@@ -38,14 +38,14 @@ Test this API by importing Postman collection within this project to your Postma
 
 # Others
 ## Project Patterns
-1. Folder Structure
+1. Folder Structure  
 This project uses the default NestJS folder structure which is Domain Driven Design (DDD), as we can see at image above there are 3 domains User, Audio, and Playlist.
 I personally like this pattern because it is convenient to work with even as a team. Also I think this structure is kinda easy to do testing.
 Another folder structure that I like is Layered Architecture, like this:
 <a href="https://imgbb.com/"><img src="https://i.ibb.co.com/sWTCc6v/gojobber-user-file-tree.png" alt="gojobber-user-file-tree" border="0"></a>  
 This is a traditional architecture and I still like it same as DDD before.
 
-2. Pattern inside code
+2. Pattern inside code  
 I am fine with Object Oriented Programming (OOP) or Functional Programming (FP) or even using both pattern. One thing I try to apply it in my code is [Strategy Pattern](https://en.wikipedia.org/wiki/Strategy_pattern).  In my case I use Strategy Pattern as to always use the interfaces rather than directly use the class implementation, I like composition over inheritance.
 
 
