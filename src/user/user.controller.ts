@@ -12,7 +12,7 @@ import {
 } from "@nestjs/common";
 import { IUserService, SUserService } from "./user.service.js";
 import { Request, Response } from "express";
-import { CreateUserDTO, LoginDTO } from "./types.js";
+import { RegisterDto, LoginDto } from "./types.js";
 import { matchingString } from "../util/bcrypt.js";
 import { JwtService } from "@nestjs/jwt";
 import { AuthGuard } from "./auth.guard.js";
@@ -20,7 +20,8 @@ import { AuthGuard } from "./auth.guard.js";
 @Controller("users")
 export class UserController {
     constructor(
-        @Inject(SUserService) private readonly userSvc: IUserService,
+        @Inject(SUserService)
+        private readonly userSvc: IUserService,
         private readonly jwtService: JwtService,
     ) {}
 
@@ -38,7 +39,7 @@ export class UserController {
 
     @Get("id/:id")
     public async findUserById(
-        @Req() req: Request<{ id: string }, never, never, never>,
+        @Req() req: Request<{ id: number }, never, never, never>,
         @Res() res: Response,
     ): Promise<Response> {
         try {
@@ -58,7 +59,7 @@ export class UserController {
 
     @Post("register")
     public async register(
-        @Req() req: Request<never, never, CreateUserDTO, never>,
+        @Req() req: Request<never, never, RegisterDto, never>,
         @Res() res: Response,
     ): Promise<Response> {
         try {
@@ -106,7 +107,7 @@ export class UserController {
 
     @Post("login")
     public async login(
-        @Req() req: Request<never, never, LoginDTO, never>,
+        @Req() req: Request<never, never, LoginDto, never>,
         @Res() res: Response,
     ): Promise<Response> {
         try {

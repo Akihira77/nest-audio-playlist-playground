@@ -10,17 +10,17 @@ import {
     Res,
     UseGuards,
 } from "@nestjs/common";
-import { IPlaylistService, SPlaylistService } from "./playlist.service.js";
 import { AuthGuard } from "../user/auth.guard.js";
 import { Request, Response } from "express";
 import { CreatePlaylistDTO } from "./types.js";
+import { IPlaylistService, SPlaylistService } from "./playlist.service.js";
 
 @Controller("playlists")
 @UseGuards(AuthGuard)
 export class PlaylistController {
     constructor(
         @Inject(SPlaylistService)
-        private readonly playlistSvc: IPlaylistService,
+        private readonly playlistService: IPlaylistService,
     ) {}
 
     @Get("")
@@ -29,7 +29,7 @@ export class PlaylistController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const playlists = await this.playlistSvc.findMyPlaylists(
+            const playlists = await this.playlistService.findMyPlaylists(
                 req.user.userId,
             );
 
@@ -46,10 +46,11 @@ export class PlaylistController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const result = await this.playlistSvc.findMyPlaylistPreloadAudios(
-                req.user.userId,
-                req.params.playlistId,
-            );
+            const result =
+                await this.playlistService.findMyPlaylistPreloadAudios(
+                    req.user.userId,
+                    req.params.playlistId,
+                );
 
             if (!result) {
                 return res
@@ -70,10 +71,7 @@ export class PlaylistController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const result = await this.playlistSvc.create(
-                req.user.userId,
-                req.body,
-            );
+            const result = await this.playlistService.create(req.body);
             if (!result) {
                 throw new Error("Failed creating playlist");
             }
@@ -92,7 +90,7 @@ export class PlaylistController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const result = await this.playlistSvc.editPlaylistMetadata(
+            const result = await this.playlistService.editPlaylistMetadata(
                 req.params.playlistId,
                 req.body,
             );
@@ -122,7 +120,7 @@ export class PlaylistController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const result = await this.playlistSvc.addAudioInPlaylist(
+            const result = await this.playlistService.addAudioInPlaylist(
                 req.query.playlistId,
                 req.query.audioId,
             );
@@ -155,7 +153,7 @@ export class PlaylistController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const result = await this.playlistSvc.removeAudioInPlaylist(
+            const result = await this.playlistService.removeAudioInPlaylist(
                 req.query.playlistId,
                 req.query.audioId,
             );
@@ -180,7 +178,7 @@ export class PlaylistController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const result = await this.playlistSvc.deletePlaylist(
+            const result = await this.playlistService.deletePlaylist(
                 req.params.playlistId,
             );
 

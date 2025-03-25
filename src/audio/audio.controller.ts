@@ -29,7 +29,8 @@ import { createReadStream, statSync } from "fs";
 export class AudioController {
     private readonly uploadDir = "./uploads";
     constructor(
-        @Inject(SAudioService) private readonly audioSvc: IAudioService,
+        @Inject(SAudioService)
+        private readonly audioService: IAudioService,
     ) {}
 
     @Get("")
@@ -38,7 +39,7 @@ export class AudioController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const all = await this.audioSvc.findAll();
+            const all = await this.audioService.findAll();
 
             return res.status(HttpStatus.OK).json({ audios: all });
         } catch (error) {
@@ -54,7 +55,7 @@ export class AudioController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const result = await this.audioSvc.audiosQuerySearch(
+            const result = await this.audioService.audiosQuerySearch(
                 req.query.query ?? "",
             );
 
@@ -72,7 +73,9 @@ export class AudioController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const all = await this.audioSvc.findAllByUserId(req.user.userId);
+            const all = await this.audioService.findAllByUserId(
+                req.user.userId,
+            );
 
             return res.status(HttpStatus.OK).json({ audios: all });
         } catch (error) {
@@ -87,17 +90,52 @@ export class AudioController {
         @Res() res: Response,
     ): Promise<Response | StreamableFile> {
         try {
-            const a = await this.audioSvc.findAudioById(req.params.audioId);
+            const a = await this.audioService.findAudioById(req.params.audioId);
             if (!a) {
                 return res.status(HttpStatus.NOT_FOUND).send("Audio not found");
             }
             const filePath = path.join(this.uploadDir, a.file_path);
             const stat = statSync(filePath);
             const fileSize = stat.size;
-            const start = 0;
-            const end = fileSize - 1;
+
+            const range = req.headers.range;
+            if (!range) {
+                // If no range header is sent, return the entire file
+                const head = {
+                    "Content-Length": fileSize,
+                    "Content-Type": "audio/mpeg",
+                };
+                res.writeHead(HttpStatus.OK, head);
+                createReadStream(filePath).pipe(res); // Full file streaming
+                return;
+            }
+
+            // Parse the range header (e.g., "bytes=0-499")
+            const [startString, endString] = range
+                .replace(/bytes=/, "")
+                .split("-");
+            const start = parseInt(startString, 10);
+            let end = endString ? parseInt(endString, 10) : fileSize - 1;
+
+            console.log(
+                `filesize: ${fileSize}; start: ${startString}; end: ${endString}`,
+            );
+            // Ensure the end doesn't exceed the file size
+            if (end >= fileSize) {
+                end = fileSize - 1;
+            }
+
+            // Validate the range
+            if (start >= fileSize || start > end || start < 0) {
+                // Invalid range, respond with 416 Range Not Satisfiable
+                res.writeHead(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE, {
+                    "Content-Range": `bytes */${fileSize}`,
+                });
+                return res.end();
+            }
+
             const chunkSize = end - start + 1;
-            const file = createReadStream(filePath, { start, end });
+            const file = createReadStream(filePath, { start: start, end: end });
             const head = {
                 "Content-Range": `bytes ${start}-${end}/${fileSize}`,
                 "Accept-Ranges": "bytes",
@@ -119,7 +157,7 @@ export class AudioController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const a = await this.audioSvc.findAudioById(req.params.id);
+            const a = await this.audioService.findAudioById(req.params.id);
             if (!a) {
                 return res.status(HttpStatus.NOT_FOUND).send("Audio not found");
             }
@@ -175,7 +213,7 @@ export class AudioController {
 
             const [_, result] = await Promise.all([
                 writeFile(filePath, file.buffer),
-                this.audioSvc.upload(data),
+                this.audioService.upload(data),
             ]);
 
             if (!result) {
@@ -213,7 +251,7 @@ export class AudioController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            let audioFromDb = await this.audioSvc.findMyAudio(
+            let audioFromDb = await this.audioService.findMyAudio(
                 req.params.audioId,
                 req.user.userId,
             );
@@ -227,7 +265,7 @@ export class AudioController {
             };
             if (file) {
                 let filePath = path.join(this.uploadDir, audioFromDb.file_path);
-                this.audioSvc.removeFile(filePath);
+                this.audioService.removeFile(filePath);
 
                 const metadata = await parseBuffer(file.buffer, file.mimetype);
                 const duration = metadata.format.duration;
@@ -238,12 +276,12 @@ export class AudioController {
                 audioFromDb.file_path = generateRandomFileName(
                     file.originalname,
                 );
-                audioFromDb.duration = duration.toString();
+                audioFromDb.duration = duration;
                 filePath = path.join(this.uploadDir, audioFromDb.file_path);
                 writeFile(filePath, file.buffer);
             }
 
-            const result = await this.audioSvc.update(
+            const result = await this.audioService.update(
                 req.params.audioId,
                 audioFromDb,
             );
@@ -276,8 +314,8 @@ export class AudioController {
             }
 
             const [result, audio] = await Promise.all([
-                this.audioSvc.editLike(req.params.audioId, num),
-                this.audioSvc.findAudioById(req.params.audioId),
+                this.audioService.editLike(req.params.audioId, num),
+                this.audioService.findAudioById(req.params.audioId),
             ]);
 
             if (!result) {
@@ -302,7 +340,7 @@ export class AudioController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const a = await this.audioSvc.findMyAudio(
+            const a = await this.audioService.findMyAudio(
                 req.params.audioId,
                 req.user.userId,
             );
@@ -310,7 +348,7 @@ export class AudioController {
                 return res.status(HttpStatus.NOT_FOUND).send("Audio not found");
             }
 
-            const result = await this.audioSvc.delete(
+            const result = await this.audioService.delete(
                 a.id,
                 path.join(this.uploadDir, a.file_path),
             );

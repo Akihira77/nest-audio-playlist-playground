@@ -1,54 +1,42 @@
-import { Inject } from "@nestjs/common";
-import { eq } from "drizzle-orm";
-import { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { PG_CONNECTION } from "../constants.js";
-import * as schema from "../drizzle/schema.js";
+import { Injectable } from "@nestjs/common";
 import { hashString } from "../util/bcrypt.js";
-import { UserDTO, UserModel, CreateUserDTO } from "./types.js";
+import { RegisterDto, User } from "./types.js";
+import { Repository } from "typeorm";
+import { InjectRepository } from "@nestjs/typeorm";
 
 export interface IUserService {
-    findAll(): Promise<UserDTO[]>;
-    findUserByIdExcPassword(id: string): Promise<UserDTO | undefined>;
-    findRawUserById(id: string): Promise<UserModel | undefined>;
-    findRawUserByEmail(email: string): Promise<UserModel | undefined>;
-    create(u: CreateUserDTO): Promise<UserDTO | undefined>;
-    updateName(id: string, name: string): Promise<UserDTO | undefined>;
-    changePassword(
-        id: string,
-        newPassword: string,
-    ): Promise<UserDTO | undefined>;
-    delete(userId: string): Promise<boolean>;
+    findAll(): Promise<User[]>;
+    findUserByIdExcPassword(id: number): Promise<User | null>;
+    findRawUserById(id: number): Promise<User | null>;
+    findRawUserByEmail(email: string): Promise<User | null>;
+    create(u: RegisterDto): Promise<User | null>;
+    updateName(id: number, name: string): Promise<User | null>;
+    changePassword(id: number, newPassword: string): Promise<User | null>;
+    delete(userId: number): Promise<boolean>;
 }
 export const SUserService = Symbol("IUserService");
 
+@Injectable()
 export class UserService implements IUserService {
     constructor(
-        @Inject(PG_CONNECTION)
-        private readonly db: NodePgDatabase<typeof schema>,
+        @InjectRepository(User)
+        private readonly userRepository: Repository<User>,
     ) {}
 
-    public async delete(userId: string): Promise<boolean> {
+    public async delete(userId: number): Promise<boolean> {
         try {
-            const res = await this.db
-                .delete(schema.users)
-                .where(eq(schema.users.id, userId));
-
-            return res.rowCount > 0;
+            const res = await this.userRepository.delete(userId);
+            return res.affected > 0; // Return true if a row was deleted
         } catch (error) {
             console.error(`${this.delete.name} error`, error);
             return false;
         }
     }
 
-    public async findAll(): Promise<UserDTO[]> {
+    public async findAll(): Promise<User[]> {
         try {
-            return this.db.query.users.findMany({
-                columns: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    createdAt: true,
-                },
+            return await this.userRepository.find({
+                select: ["id", "name", "email", "createdAt"],
             });
         } catch (error) {
             console.error(`${this.findAll.name} error`, error);
@@ -56,74 +44,54 @@ export class UserService implements IUserService {
         }
     }
 
-    public async findUserByIdExcPassword(
-        id: string,
-    ): Promise<UserDTO | undefined> {
+    public async findUserByIdExcPassword(id: number): Promise<User | null> {
         try {
-            const result = await this.db.query.users.findFirst({
-                where: eq(schema.users.id, id),
-                columns: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    createdAt: true,
-                },
+            return await this.userRepository.findOne({
+                where: { id },
+                select: ["id", "name", "email", "createdAt"], // Excluding password
             });
-
-            return result;
         } catch (error) {
             console.error(`${this.findUserByIdExcPassword.name} error`, error);
             return undefined;
         }
     }
 
-    public async findRawUserById(id: string): Promise<UserModel | undefined> {
+    public async findRawUserById(id: number): Promise<User | undefined> {
         try {
-            const result = await this.db.query.users.findFirst({
-                where: eq(schema.users.id, id),
-            });
-
-            return result;
+            return await this.userRepository.findOne({ where: { id } });
         } catch (error) {
             console.error(`${this.findRawUserById.name} error`, error);
             return undefined;
         }
     }
 
-    public async findRawUserByEmail(
-        email: string,
-    ): Promise<UserModel | undefined> {
+    public async findRawUserByEmail(email: string): Promise<User | undefined> {
         try {
-            const result = await this.db.query.users.findFirst({
-                where: eq(schema.users.email, email),
-            });
-
-            return result;
+            return await this.userRepository.findOne({ where: { email } });
         } catch (error) {
             console.error(`${this.findRawUserByEmail.name} error`, error);
             return undefined;
         }
     }
 
-    public async create(u: CreateUserDTO): Promise<UserDTO | undefined> {
+    public async create(u: RegisterDto): Promise<User | undefined> {
         try {
             const hashedPassword = await hashString(u.password);
+            const newUser = this.userRepository.create({
+                name: u.name,
+                email: u.email,
+                password: hashedPassword,
+            });
 
-            const res = await this.db
-                .insert(schema.users)
-                .values({
-                    name: u.name,
-                    email: u.email,
-                    password: hashedPassword,
-                })
-                .returning({
-                    id: schema.users.id,
-                    name: schema.users.name,
-                    email: schema.users.email,
-                    createdAt: schema.users.createdAt,
-                });
+            const savedUser = await this.userRepository.save(newUser);
 
-            return res[0];
+            // Select specific fields to return after saving
+            return {
+                id: savedUser.id,
+                name: savedUser.name,
+                email: savedUser.email,
+                createdAt: savedUser.createdAt,
+            } as User;
         } catch (error) {
             console.error(`${this.create.name} error`, error);
             return undefined;
@@ -131,24 +99,16 @@ export class UserService implements IUserService {
     }
 
     public async updateName(
-        id: string,
+        id: number,
         name: string,
-    ): Promise<UserDTO | undefined> {
+    ): Promise<User | undefined> {
         try {
-            const res = await this.db
-                .update(schema.users)
-                .set({
-                    name: name,
-                })
-                .where(eq(schema.users.id, id))
-                .returning({
-                    id: schema.users.id,
-                    name: schema.users.name,
-                    email: schema.users.email,
-                    createdAt: schema.users.createdAt,
-                });
+            await this.userRepository.update(id, { name });
 
-            return res[0];
+            return await this.userRepository.findOne({
+                where: { id },
+                select: ["id", "name", "email", "createdAt"],
+            });
         } catch (error) {
             console.error(`${this.updateName.name} error`, error);
             return undefined;
@@ -156,25 +116,17 @@ export class UserService implements IUserService {
     }
 
     public async changePassword(
-        id: string,
+        id: number,
         newPassword: string,
-    ): Promise<UserDTO | undefined> {
+    ): Promise<User | undefined> {
         try {
             const hashedPassword = await hashString(newPassword);
-            const res = await this.db
-                .update(schema.users)
-                .set({
-                    password: hashedPassword,
-                })
-                .where(eq(schema.users.id, id))
-                .returning({
-                    id: schema.users.id,
-                    name: schema.users.name,
-                    email: schema.users.email,
-                    createdAt: schema.users.createdAt,
-                });
+            await this.userRepository.update(id, { password: hashedPassword });
 
-            return res[0];
+            return await this.userRepository.findOne({
+                where: { id },
+                select: ["id", "name", "email", "createdAt"],
+            });
         } catch (error) {
             console.error(`${this.changePassword.name} error`, error);
             return undefined;

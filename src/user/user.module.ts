@@ -1,12 +1,13 @@
 import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
-import { DrizzleModule } from "../drizzle/drizzle.module.js";
 import { UserController } from "./user.controller.js";
 import { SUserService, UserService } from "./user.service.js";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { User } from "./types.js";
 
 @Module({
     imports: [
-        DrizzleModule,
+        TypeOrmModule.forFeature([User]),
         JwtModule.register({
             global: true,
             secret: process.env.JWT_SECRET,

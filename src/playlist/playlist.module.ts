@@ -1,7 +1,8 @@
 import { Module } from "@nestjs/common";
-import { DrizzleModule } from "../drizzle/drizzle.module.js";
 import { PlaylistService, SPlaylistService } from "./playlist.service.js";
 import { PlaylistController } from "./playlist.controller.js";
+import { Playlist } from "./types.js";
+import { TypeOrmModule } from "@nestjs/typeorm";
 
 @Module({
     controllers: [PlaylistController],
@@ -11,6 +12,6 @@ import { PlaylistController } from "./playlist.controller.js";
             useClass: PlaylistService,
         },
     ],
-    imports: [DrizzleModule],
+    imports: [TypeOrmModule.forFeature([Playlist])],
 })
 export class PlaylistModule {}

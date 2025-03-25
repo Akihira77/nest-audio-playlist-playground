@@ -1,222 +1,206 @@
-import { Inject } from "@nestjs/common";
-import { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { PG_CONNECTION } from "../constants.js";
-import * as schema from "../drizzle/schema.js";
-import {
-    CreatePlaylistDTO,
-    PlaylistAudioDTO,
-    PlaylistMetadataModel,
-} from "./types.js";
-import { and, eq, sql } from "drizzle-orm";
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { Repository } from "typeorm";
+import { CreatePlaylistDTO, Playlist } from "./types.js";
+import { Audio } from "../audio/types.js";
+import { InjectRepository } from "@nestjs/typeorm";
 
 export interface IPlaylistService {
-    create(
-        userId: string,
-        data: CreatePlaylistDTO,
-    ): Promise<PlaylistMetadataModel | undefined>;
+    create(data: CreatePlaylistDTO): Promise<Playlist>;
     addAudioInPlaylist(playlistId: number, audioId: number): Promise<boolean>;
     editPlaylistMetadata(
         playlistId: number,
         data: CreatePlaylistDTO,
-    ): Promise<PlaylistMetadataModel | undefined>;
-    findMyPlaylists(userId: string): Promise<PlaylistMetadataModel[]>;
+    ): Promise<Playlist>;
+    findMyPlaylists(userId: number): Promise<Playlist[]>;
     findMyPlaylistPreloadAudios(
-        userId: string,
+        userId: number,
         playlistId: number,
-    ): Promise<PlaylistAudioDTO | undefined>;
+    ): Promise<Playlist | null>;
     removeAudioInPlaylist(
         playlistId: number,
         audioId: number,
     ): Promise<boolean>;
     deletePlaylist(playlistId: number): Promise<boolean>;
 }
+
 export const SPlaylistService = Symbol("IPlaylistService");
 
+@Injectable()
 export class PlaylistService implements IPlaylistService {
     constructor(
-        @Inject(PG_CONNECTION)
-        private readonly db: NodePgDatabase<typeof schema>,
+        @InjectRepository(Playlist)
+        private readonly playlistRepository: Repository<Playlist>,
     ) {}
 
-    public async removeAudioInPlaylist(
-        playlistId: number,
-        audioId: number,
-    ): Promise<boolean> {
+    async create(data: CreatePlaylistDTO): Promise<Playlist> {
         try {
-            const res = await this.db
-                .delete(schema.usersPlaylists)
-                .where(
-                    and(
-                        eq(schema.usersPlaylists.playlistId, playlistId),
-                        eq(schema.usersPlaylists.audioId, audioId),
-                    ),
-                );
-
-            return res.rowCount > 0;
-        } catch (error) {
-            console.error(`${this.removeAudioInPlaylist.name} error`, error);
-            return false;
-        }
-    }
-
-    public async deletePlaylist(playlistId: number): Promise<boolean> {
-        try {
-            const res = await this.db
-                .delete(schema.playlistMetadata)
-                .where(eq(schema.playlistMetadata.id, playlistId));
-
-            return res.rowCount > 0;
-        } catch (error) {
-            console.error(`${this.deletePlaylist.name} error`, error);
-            return false;
-        }
-    }
-
-    public async create(
-        userId: string,
-        data: CreatePlaylistDTO,
-    ): Promise<PlaylistMetadataModel | undefined> {
-        try {
-            const res = await this.db
-                .insert(schema.playlistMetadata)
-                .values({
-                    userId: userId,
-                    name: data.name,
-                    isPublic: data.isPublic,
-                    audioCount: 0,
-                })
-                .returning();
-
-            return res[0];
+            const playlist = this.playlistRepository.create({
+                name: data.name,
+                isPublic: data.isPublic,
+                audioCount: 0,
+            });
+            return await this.playlistRepository.save(playlist);
         } catch (error) {
             console.error(`${this.create.name} error`, error);
             return undefined;
         }
     }
 
-    public async addAudioInPlaylist(
+    async addAudioInPlaylist(
         playlistId: number,
         audioId: number,
     ): Promise<boolean> {
+        const queryRunner =
+            this.playlistRepository.manager.connection.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
         try {
-            const res = await this.db.transaction(async (tx) => {
-                try {
-                    const insertAudioInPlaylist = tx
-                        .insert(schema.usersPlaylists)
-                        .values({
-                            playlistId: playlistId,
-                            audioId: audioId,
-                        } as any);
-
-                    const updatePlaylistAudiosCount = tx.execute(sql`
-                        UPDATE playlist_metadata
-                        SET audio_count = audio_count + 1
-                        WHERE id = ${playlistId}
-                    `);
-
-                    const [res, _] = await Promise.all([
-                        insertAudioInPlaylist,
-                        updatePlaylistAudiosCount,
-                    ]);
-
-                    return res.rowCount > 0;
-                } catch (error) {
-                    tx.rollback();
-                    console.error(
-                        `${this.addAudioInPlaylist.name} error`,
-                        error,
-                    );
-                    return false;
-                }
+            // Find the playlist and audio, including relations if necessary
+            const playlist = await queryRunner.manager.findOne(Playlist, {
+                where: { id: playlistId },
+                relations: ["audios"], // Include current audios in the playlist
+            });
+            const audio = await queryRunner.manager.findOne(Audio, {
+                where: { id: audioId },
             });
 
-            return res;
+            if (!playlist || !audio) {
+                throw new HttpException(
+                    "Playlist or audio not found",
+                    HttpStatus.NOT_FOUND,
+                );
+            }
+
+            // Add the audio to the playlist's existing audios (if not already added)
+            const audios = await playlist.audios;
+            audios.push(audio);
+
+            // Increment audioCount in the playlist table
+            await queryRunner.manager.increment(
+                Playlist,
+                { id: playlistId },
+                "audioCount",
+                1,
+            );
+
+            // Save the playlist with the updated audios array
+            await queryRunner.manager.save(Playlist, playlist);
+
+            // Commit the transaction
+            await queryRunner.commitTransaction();
+            return true;
         } catch (error) {
+            await queryRunner.rollbackTransaction();
             console.error(`${this.addAudioInPlaylist.name} error`, error);
             return false;
+        } finally {
+            await queryRunner.release();
         }
     }
-
-    public async editPlaylistMetadata(
+    async editPlaylistMetadata(
         playlistId: number,
         data: CreatePlaylistDTO,
-    ): Promise<PlaylistMetadataModel | undefined> {
+    ): Promise<Playlist | undefined> {
         try {
-            const res = await this.db
-                .update(schema.playlistMetadata)
-                .set({
-                    name: data.name,
-                    isPublic: data.isPublic,
-                })
-                .where(eq(schema.playlistMetadata.id, playlistId))
-                .returning();
-
-            return res[0];
+            await this.playlistRepository.update(
+                { id: playlistId },
+                { name: data.name, isPublic: data.isPublic },
+            );
+            return await this.playlistRepository.findOne({
+                where: { id: playlistId },
+            });
         } catch (error) {
-            console.error(`${this.addAudioInPlaylist.name} error`, error);
+            console.error(`${this.editPlaylistMetadata.name} error`, error);
             return undefined;
         }
     }
 
-    public async findMyPlaylists(
-        userId: string,
-    ): Promise<PlaylistMetadataModel[]> {
+    async findMyPlaylists(userId: number): Promise<Playlist[]> {
         try {
-            const res = await this.db.query.playlistMetadata.findMany({
-                where: eq(schema.playlistMetadata.userId, userId),
+            return await this.playlistRepository.find({
+                where: { id: userId },
             });
-
-            return res;
         } catch (error) {
             console.error(`${this.findMyPlaylists.name} error`, error);
-            return undefined;
+            return [];
         }
     }
 
-    public async findMyPlaylistPreloadAudios(
-        userId: string,
+    async findMyPlaylistPreloadAudios(
+        userId: number,
         playlistId: number,
-    ): Promise<PlaylistAudioDTO | undefined> {
+    ): Promise<Playlist | null> {
         try {
-            const playlistMeta = this.db.query.playlistMetadata.findFirst({
-                where: and(
-                    eq(schema.playlistMetadata.id, playlistId),
-                    eq(schema.playlistMetadata.userId, userId),
-                ),
+            // Load playlist with audios and check user ownership
+            const playlist = await this.playlistRepository.findOne({
+                where: {
+                    id: playlistId,
+                    user: { id: userId },
+                },
+                relations: ["audios"], // Preload audios
             });
-            const audiosInPlaylist = this.db
-                .select({
-                    id: schema.audios.id,
-                    title: schema.audios.title,
-                    duration: schema.audios.duration,
-                    creator: schema.audios.creator,
-                    publishAt: schema.audios.publishAt,
-                    likes: schema.audios.likes,
-                })
-                .from(schema.usersPlaylists)
-                .leftJoin(
-                    schema.audios,
-                    eq(schema.usersPlaylists.audioId, schema.audios.id),
-                )
-                .where(eq(schema.usersPlaylists.playlistId, playlistId));
 
-            const [p, a] = await Promise.all([playlistMeta, audiosInPlaylist]);
-
-            return {
-                id: p.id,
-                userId: p.userId,
-                name: p.name,
-                audioCount: p.audioCount,
-                isPublic: p.isPublic,
-                createdAt: p.createdAt,
-                audios: a,
-            };
+            return playlist;
         } catch (error) {
             console.error(
                 `${this.findMyPlaylistPreloadAudios.name} error`,
                 error,
             );
             return undefined;
+        }
+    }
+
+    async removeAudioInPlaylist(
+        playlistId: number,
+        audioId: number,
+    ): Promise<boolean> {
+        const queryRunner =
+            this.playlistRepository.manager.connection.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
+        try {
+            // Load the playlist with its audios (to modify the list)
+            const playlist = await this.playlistRepository.findOne({
+                where: { id: playlistId },
+                relations: ["audios"],
+            });
+
+            if (!playlist) throw new Error("Playlist not found");
+
+            // Filter out the audio to remove it from the playlist
+            const audios = await playlist.audios;
+            playlist.audios = Promise.resolve(
+                audios.filter((audio) => audio.id !== audioId),
+            );
+
+            // Update audioCount and save the updated playlist
+            playlist.audioCount = audios.length;
+
+            // Save changes within the transaction
+            await queryRunner.manager.save(playlist);
+            await queryRunner.commitTransaction();
+
+            return true;
+        } catch (error) {
+            await queryRunner.rollbackTransaction();
+            console.error(`${this.removeAudioInPlaylist.name} error`, error);
+            return false;
+        } finally {
+            await queryRunner.release();
+        }
+    }
+
+    async deletePlaylist(playlistId: number): Promise<boolean> {
+        try {
+            const result = await this.playlistRepository.delete({
+                id: playlistId,
+            });
+            return result.affected > 0;
+        } catch (error) {
+            console.error(`${this.deletePlaylist.name} error`, error);
+            return false;
         }
     }
 }

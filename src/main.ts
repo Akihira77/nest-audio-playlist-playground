@@ -1,10 +1,14 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module.js";
 import cookieParser from "cookie-parser";
+import { ConsoleLogger } from "@nestjs/common";
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
-        logger: ["verbose"],
+        logger: new ConsoleLogger("Nest Audio", {
+            logLevels: ["verbose"],
+            timestamp: true,
+        }),
     });
     app.setGlobalPrefix("/api");
     app.useGlobalPipes();

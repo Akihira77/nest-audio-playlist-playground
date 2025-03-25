@@ -1,1 +1,0 @@
-ALTER TABLE "users_playlists" ADD CONSTRAINT "users_playlists_playlist_id_audio_id_pk" PRIMARY KEY("playlist_id","audio_id");

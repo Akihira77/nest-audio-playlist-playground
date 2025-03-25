@@ -4,7 +4,7 @@ declare global {
     namespace Express {
         export interface Request extends Request {
             user: {
-                userId: string;
+                userId: number;
                 name: string;
             };
         }

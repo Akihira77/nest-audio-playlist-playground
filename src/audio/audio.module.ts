@@ -1,10 +1,11 @@
 import { Module } from "@nestjs/common";
 import { MulterModule } from "@nestjs/platform-express";
 import * as multer from "multer";
-import { DrizzleModule } from "../drizzle/drizzle.module.js";
 import { UserModule } from "../user/user.module.js";
 import { AudioController } from "./audio.controller.js";
 import { SAudioService, AudioService } from "./audio.service.js";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { Audio } from "../audio/types.js";
 
 @Module({
     controllers: [AudioController],
@@ -15,8 +16,8 @@ import { SAudioService, AudioService } from "./audio.service.js";
         },
     ],
     imports: [
-        DrizzleModule,
         UserModule,
+        TypeOrmModule.forFeature([Audio]),
         MulterModule.register({
             dest: "./uploads",
             storage: multer.memoryStorage(),

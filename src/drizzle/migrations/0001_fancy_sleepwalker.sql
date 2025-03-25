@@ -1,1 +1,0 @@
-ALTER TABLE "audios" ALTER COLUMN "uploader_id" SET DATA TYPE uuid;
