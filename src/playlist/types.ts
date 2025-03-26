@@ -3,6 +3,7 @@ import { User } from "../user/types.js";
 import {
     Column,
     Entity,
+    Index,
     JoinTable,
     ManyToMany,
     ManyToOne,
@@ -43,13 +44,14 @@ export class Playlist {
     user: Promise<User>;
 
     @Column({ type: "varchar", length: 255 })
+    @Index()
     name: string;
 
     @Column({ type: "boolean", default: true })
     isPublic: boolean;
 
     @ManyToMany(() => Audio, (audio) => audio.playlists)
-    @JoinTable({ name: "users_playlists" }) // Join table to store the many-to-many relation
+    @JoinTable({ name: "users_playlists" })
     audios: Promise<Audio[]>;
 
     @Column({ type: "int", default: 0 })

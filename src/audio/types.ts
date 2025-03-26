@@ -3,6 +3,7 @@ import { User } from "../user/types.js";
 import {
     Column,
     Entity,
+    Index,
     ManyToMany,
     ManyToOne,
     PrimaryGeneratedColumn,
@@ -27,7 +28,6 @@ export type UploadAudioDTO = {
     creator: string;
     publishAt: number;
     file_path: string;
-    uploaderId: number;
 };
 
 @Entity("audios")
@@ -36,12 +36,14 @@ export class Audio {
     id: number;
 
     @Column({ type: "varchar", length: 255 })
+    @Index()
     title: string;
 
     @Column({ type: "decimal" })
     duration: number;
 
     @Column({ type: "varchar", length: 255 })
+    @Index()
     creator: string;
 
     @Column({ type: "int" })
@@ -64,15 +66,4 @@ export class Audio {
 
     @Column({ type: "timestamptz", default: null })
     deletedAt: Date | null;
-
-    constructor(data?: Partial<Audio>) {
-        if (data) {
-            this.title = data.title;
-            this.duration = data.duration;
-            this.creator = data.creator;
-            this.publishAt = data.publishAt;
-            this.file_path = data.file_path;
-            this.uploader = data.uploader;
-        }
-    }
 }

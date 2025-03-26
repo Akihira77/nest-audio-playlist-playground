@@ -26,7 +26,7 @@ export class UserService implements IUserService {
     public async delete(userId: number): Promise<boolean> {
         try {
             const res = await this.userRepository.delete(userId);
-            return res.affected > 0; // Return true if a row was deleted
+            return res.affected > 0;
         } catch (error) {
             console.error(`${this.delete.name} error`, error);
             return false;
@@ -48,7 +48,7 @@ export class UserService implements IUserService {
         try {
             return await this.userRepository.findOne({
                 where: { id },
-                select: ["id", "name", "email", "createdAt"], // Excluding password
+                select: ["id", "name", "email", "createdAt"],
             });
         } catch (error) {
             console.error(`${this.findUserByIdExcPassword.name} error`, error);
@@ -85,7 +85,6 @@ export class UserService implements IUserService {
 
             const savedUser = await this.userRepository.save(newUser);
 
-            // Select specific fields to return after saving
             return {
                 id: savedUser.id,
                 name: savedUser.name,

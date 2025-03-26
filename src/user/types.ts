@@ -1,4 +1,10 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import {
+    Column,
+    Entity,
+    Index,
+    OneToMany,
+    PrimaryGeneratedColumn,
+} from "typeorm";
 import { Audio } from "../audio/types.js";
 import { Playlist } from "../playlist/types.js";
 
@@ -23,6 +29,7 @@ export class User {
     name: string;
 
     @Column({ type: "varchar", length: 255 })
+    @Index()
     email: string;
 
     @Column({ type: "varchar", length: 255 })

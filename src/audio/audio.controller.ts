@@ -1,20 +1,24 @@
 import {
+    Body,
     Controller,
     Delete,
     Get,
+    Headers,
     HttpStatus,
     Inject,
+    Param,
+    ParseIntPipe,
     Patch,
     Post,
     Put,
-    Req,
+    Query,
     Res,
     StreamableFile,
     UploadedFile,
     UseGuards,
     UseInterceptors,
 } from "@nestjs/common";
-import { Request, Response } from "express";
+import { Response } from "express";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { parseBuffer } from "music-metadata";
 import * as path from "path";
@@ -24,6 +28,8 @@ import { UploadAudioDTO } from "./types.js";
 import { generateRandomFileName } from "../util/common.js";
 import { writeFile } from "fs/promises";
 import { createReadStream, statSync } from "fs";
+import { User } from "../util/decorator.js";
+import { IUserService, SUserService } from "../user/user.service.js";
 
 @Controller("audios")
 export class AudioController {
@@ -31,13 +37,12 @@ export class AudioController {
     constructor(
         @Inject(SAudioService)
         private readonly audioService: IAudioService,
+        @Inject(SUserService)
+        private readonly userService: IUserService,
     ) {}
 
     @Get("")
-    public async findAll(
-        @Req() _req: Request<never, never, never, never>,
-        @Res() res: Response,
-    ): Promise<Response> {
+    public async findAll(@Res() res: Response): Promise<Response> {
         try {
             const all = await this.audioService.findAll();
 
@@ -50,13 +55,12 @@ export class AudioController {
 
     @Get("search")
     public async audiosQuerySearch(
-        @Req()
-        req: Request<never, never, never, { query: string }>,
+        @Query() queryParams: { query: string },
         @Res() res: Response,
     ): Promise<Response> {
         try {
             const result = await this.audioService.audiosQuerySearch(
-                req.query.query ?? "",
+                queryParams.query ?? "",
             );
 
             return res.status(HttpStatus.OK).json({ audios: result });
@@ -69,12 +73,12 @@ export class AudioController {
     @UseGuards(AuthGuard)
     @Get("my-audio")
     public async findAllMyAudio(
-        @Req() req: Request<never, never, never, never>,
+        @User() currentUser: { userId: number; name: string },
         @Res() res: Response,
     ): Promise<Response> {
         try {
             const all = await this.audioService.findAllByUserId(
-                req.user.userId,
+                currentUser.userId,
             );
 
             return res.status(HttpStatus.OK).json({ audios: all });
@@ -86,11 +90,12 @@ export class AudioController {
 
     @Get("play/:audioId")
     public async playAudio(
-        @Req() req: Request<{ audioId: number }, never, never, never>,
+        @Headers("range") range: string,
+        @Param("audioId", ParseIntPipe) audioId: number,
         @Res() res: Response,
     ): Promise<Response | StreamableFile> {
         try {
-            const a = await this.audioService.findAudioById(req.params.audioId);
+            const a = await this.audioService.findAudioById(audioId);
             if (!a) {
                 return res.status(HttpStatus.NOT_FOUND).send("Audio not found");
             }
@@ -98,19 +103,16 @@ export class AudioController {
             const stat = statSync(filePath);
             const fileSize = stat.size;
 
-            const range = req.headers.range;
             if (!range) {
-                // If no range header is sent, return the entire file
                 const head = {
                     "Content-Length": fileSize,
                     "Content-Type": "audio/mpeg",
                 };
                 res.writeHead(HttpStatus.OK, head);
-                createReadStream(filePath).pipe(res); // Full file streaming
+                createReadStream(filePath).pipe(res);
                 return;
             }
 
-            // Parse the range header (e.g., "bytes=0-499")
             const [startString, endString] = range
                 .replace(/bytes=/, "")
                 .split("-");
@@ -120,14 +122,11 @@ export class AudioController {
             console.log(
                 `filesize: ${fileSize}; start: ${startString}; end: ${endString}`,
             );
-            // Ensure the end doesn't exceed the file size
             if (end >= fileSize) {
                 end = fileSize - 1;
             }
 
-            // Validate the range
             if (start >= fileSize || start > end || start < 0) {
-                // Invalid range, respond with 416 Range Not Satisfiable
                 res.writeHead(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE, {
                     "Content-Range": `bytes */${fileSize}`,
                 });
@@ -153,11 +152,11 @@ export class AudioController {
 
     @Get(":id")
     public async findAudioById(
-        @Req() req: Request<{ id: number }, never, never, never>,
+        @Param("id", ParseIntPipe) id: number,
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const a = await this.audioService.findAudioById(req.params.id);
+            const a = await this.audioService.findAudioById(id);
             if (!a) {
                 return res.status(HttpStatus.NOT_FOUND).send("Audio not found");
             }
@@ -173,17 +172,8 @@ export class AudioController {
     @Post("")
     @UseInterceptors(FileInterceptor("file"))
     public async upload(
-        @Req()
-        req: Request<
-            never,
-            never,
-            {
-                title: string;
-                creator: string;
-                publishAt: number;
-            },
-            never
-        >,
+        @User() currentUser: { userId: number; name: string },
+        @Body() data: { title: string; creator: string; publishAt: number },
         @UploadedFile()
         file: Express.Multer.File,
         @Res() res: Response,
@@ -197,23 +187,24 @@ export class AudioController {
 
             const metadata = await parseBuffer(file.buffer, file.mimetype);
             const duration = metadata.format.duration;
-            console.log(metadata);
             if (!duration || duration <= 0) {
                 throw new Error("Invalid audio file");
             }
 
             const fileName = generateRandomFileName(file.originalname);
             const filePath = path.join(this.uploadDir, fileName);
-            const data: UploadAudioDTO = {
-                ...req.body,
-                uploaderId: req.user.userId,
+            const user = await this.userService.findRawUserById(
+                currentUser.userId,
+            );
+            const uploadedData: UploadAudioDTO = {
+                ...data,
                 duration: duration,
                 file_path: fileName,
             };
 
             const [_, result] = await Promise.all([
                 writeFile(filePath, file.buffer),
-                this.audioService.upload(data),
+                this.audioService.upload(uploadedData, user),
             ]);
 
             if (!result) {
@@ -235,25 +226,17 @@ export class AudioController {
     @Put(":audioId")
     @UseInterceptors(FileInterceptor("file"))
     public async updateMyAudio(
-        @Req()
-        req: Request<
-            { audioId: number },
-            never,
-            {
-                title: string;
-                creator: string;
-                publishAt: number;
-            },
-            never
-        >,
+        @User() currentUser: { userId: number; name: string },
+        @Param("audioId", ParseIntPipe) audioId: number,
+        @Body() data: { title: string; creator: string; publishAt: number },
         @UploadedFile()
         file: Express.Multer.File,
         @Res() res: Response,
     ): Promise<Response> {
         try {
             let audioFromDb = await this.audioService.findMyAudio(
-                req.params.audioId,
-                req.user.userId,
+                audioId,
+                currentUser.userId,
             );
             if (!audioFromDb) {
                 return res.status(HttpStatus.NOT_FOUND).send("Audio not found");
@@ -261,7 +244,7 @@ export class AudioController {
 
             audioFromDb = {
                 ...audioFromDb,
-                ...req.body,
+                ...data,
             };
             if (file) {
                 let filePath = path.join(this.uploadDir, audioFromDb.file_path);
@@ -281,10 +264,7 @@ export class AudioController {
                 writeFile(filePath, file.buffer);
             }
 
-            const result = await this.audioService.update(
-                req.params.audioId,
-                audioFromDb,
-            );
+            const result = await this.audioService.update(audioId, audioFromDb);
             if (!result) {
                 return res
                     .status(HttpStatus.BAD_REQUEST)
@@ -303,26 +283,17 @@ export class AudioController {
     @UseGuards(AuthGuard)
     @Patch(":audioId")
     public async editLike(
-        @Req()
-        req: Request<{ audioId: number }, never, { like: boolean }, never>,
+        @Param("audioId", ParseIntPipe) audioId: number,
+        @Body() data: { like: boolean },
         @Res() res: Response,
     ): Promise<Response> {
         try {
             let num = 1;
-            if (!req.body.like) {
+            if (!data.like) {
                 num = -1;
             }
 
-            const [result, audio] = await Promise.all([
-                this.audioService.editLike(req.params.audioId, num),
-                this.audioService.findAudioById(req.params.audioId),
-            ]);
-
-            if (!result) {
-                return res
-                    .status(HttpStatus.BAD_REQUEST)
-                    .send("Error updating audio's likes");
-            }
+            const audio = await this.audioService.editLike(audioId, num);
 
             return res.status(HttpStatus.OK).json({
                 audio: audio,
@@ -336,13 +307,14 @@ export class AudioController {
     @UseGuards(AuthGuard)
     @Delete(":audioId")
     public async deleteMyAudio(
-        @Req() req: Request<{ audioId: number }, never, never, never>,
+        @User() currentUser: { userId: number; name: string },
+        @Param("audioId", ParseIntPipe) audioId: number,
         @Res() res: Response,
     ): Promise<Response> {
         try {
             const a = await this.audioService.findMyAudio(
-                req.params.audioId,
-                req.user.userId,
+                audioId,
+                currentUser.userId,
             );
             if (!a) {
                 return res.status(HttpStatus.NOT_FOUND).send("Audio not found");

@@ -4,9 +4,10 @@ import { PathLike } from "fs";
 import { unlink } from "fs/promises";
 import { ILike, Repository } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
+import { User } from "../user/types.js";
 
 export interface IAudioService {
-    upload(data: UploadAudioDTO): Promise<Audio | undefined>;
+    upload(data: UploadAudioDTO, uploader: User): Promise<Audio | undefined>;
     update(
         audioId: number,
         data: UploadAudioDTO | Audio,
@@ -18,7 +19,7 @@ export interface IAudioService {
         audioId: number,
         uploaderId: number,
     ): Promise<Audio | undefined>;
-    editLike(audioId: number, num: number): Promise<boolean>;
+    editLike(audioId: number, num: number): Promise<Audio>;
     findAll(): Promise<Audio[]>;
     findAllByUserId(userId: number): Promise<Audio[]>;
     audiosQuerySearch(query: string): Promise<Audio[]>;
@@ -40,10 +41,10 @@ export class AudioService implements IAudioService {
         try {
             return await this.audioRepository.find({
                 where: [
-                    { title: ILike(`%${query.trim()}%`) },
-                    { creator: ILike(`%${query.trim()}%`) },
+                    { title: ILike(`%${query}%`) },
+                    { creator: ILike(`%${query}%`) },
                 ],
-                select: { file_path: false }, // exclude file_path from the result
+                select: { file_path: false },
             });
         } catch (error) {
             this.logError(this.audiosQuerySearch.name, error);
@@ -66,17 +67,30 @@ export class AudioService implements IAudioService {
         });
     }
 
-    async editLike(audioId: number, num: number): Promise<boolean> {
+    async editLike(audioId: number, num: number): Promise<Audio> {
+        const queryRunner =
+            this.audioRepository.manager.connection.createQueryRunner();
+        await queryRunner.connect();
+
         try {
-            const result = await this.audioRepository.increment(
-                { id: audioId },
-                "likes",
-                num,
-            );
-            return result.affected > 0;
+            await queryRunner.startTransaction("READ COMMITTED");
+
+            const audio = await queryRunner.manager.findOne(Audio, {
+                where: { id: audioId },
+                lock: { mode: "pessimistic_write" },
+            });
+
+            audio.likes += num;
+            await queryRunner.manager.save(Audio, audio);
+            await queryRunner.commitTransaction();
+
+            return audio;
         } catch (error) {
+            await queryRunner.rollbackTransaction();
             this.logError(this.editLike.name, error);
-            return false;
+            throw error;
+        } finally {
+            await queryRunner.release();
         }
     }
 
@@ -98,10 +112,11 @@ export class AudioService implements IAudioService {
         });
     }
 
-    async upload(data: UploadAudioDTO): Promise<Audio> {
+    async upload(data: UploadAudioDTO, uploader: User): Promise<Audio> {
         try {
-            let audio = new Audio(data);
-            audio = this.audioRepository.create(data);
+            const audio = this.audioRepository.create(data);
+            audio.uploader = Promise.resolve(uploader);
+
             return await this.audioRepository.save(audio);
         } catch (error) {
             this.logError(this.upload.name, error);
@@ -131,7 +146,10 @@ export class AudioService implements IAudioService {
     async delete(audioId: number, filePath: PathLike): Promise<boolean> {
         try {
             const result = await this.audioRepository.delete({ id: audioId });
-            await this.removeFile(filePath);
+            if (result.affected > 0) {
+                await this.removeFile(filePath);
+            }
+
             return result.affected > 0;
         } catch (error) {
             this.logError(this.delete.name, error);

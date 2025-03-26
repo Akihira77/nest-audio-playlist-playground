@@ -1,5 +1,5 @@
 # Overview
-This is a Nest Audio Playlist Playground API. Build with NestJS (Typescript), DrizzleORM,
+This is a Nest Audio Playlist Playground API. Build with NestJS (Typescript), TypeORM,
 PostgreSQL.
 
 # Feature
@@ -15,26 +15,21 @@ PostgreSQL.
     -- Create playlist  
     -- Add audio to a playlist  
     -- Read all user playlist  
-    -- Read all audios inside a playlist  
+    -- Open a playlist or read all audios inside a playlist  
     -- Update playlist metadata  
     -- Remove an audio from a playlist  
     -- Delete a playlist
 
 # How To Run
-Clone this project and create a `.env` file contains  
-```
-PORT=
-DB_URI=
-JWT_SECRET=
-```
-Test this API by importing Postman collection within this project to your Postman app.
+Clone this project and create a `.env` file contains exactly like `.env.example` file.  
+Test this API by importing Postman collection within this project to your Postman or Insomnia app.
 
 # System Design
 ## Database Design
-<a href="https://ibb.co.com/QJ7CSj3"><img src="https://i.ibb.co.com/nwqnd8N/nest-audio-playlist-db-design.png" alt="nest-audio-playlist-db-design" border="0"></a>
+<a href="https://ibb.co.com/whR96FZr"><img src="https://i.ibb.co.com/9HNFYkm3/image.png" alt="database-design" border="0"></a>
 
 ## Project Architecture
-<a href="https://ibb.co.com/g68pV7x"><img src="https://i.ibb.co.com/b7VZJ3k/nest-audio-playlist-src-file-tree.png" alt="nest-audio-playlist-src-file-tree" border="0"></a>
+<a href="https://ibb.co.com/Z1w1vrw9"><img src="https://i.ibb.co.com/wrbr8qbt/image.png" alt="nest-project-architecture" border="0"></a>
 
 # Others
 ## Project Patterns
@@ -46,6 +41,4 @@ Another folder structure that I like is Layered Architecture, like this:
 This is a traditional architecture and I still like it same as DDD before.
 
 2. Pattern inside code  
-I am fine with Object Oriented Programming (OOP) or Functional Programming (FP) or even using both pattern. One thing I try to apply it in my code is [Strategy Pattern](https://en.wikipedia.org/wiki/Strategy_pattern).  In my case I use Strategy Pattern as to always use the interfaces rather than directly use the class implementation, I like composition over inheritance.
-
-
+I am fine with Object Oriented Programming (OOP) or Functional Programming (FP) or even using both pattern. One thing I try to apply it in my code is [Strategy Pattern](https://en.wikipedia.org/wiki/Strategy_pattern).  In my case I tend to apply Strategy Pattern by using interfaces rather than directly use the class implementation, I like composition over inheritance.

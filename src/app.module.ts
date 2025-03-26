@@ -20,6 +20,7 @@ import { Playlist } from "./playlist/types.js";
             database: process.env.POSTGRES_DATABASE,
             entities: [User, Audio, Playlist],
             synchronize: true,
+            logging: ["query", "error"],
         }),
         UserModule,
         AudioModule,

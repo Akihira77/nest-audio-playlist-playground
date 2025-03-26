@@ -1,21 +1,24 @@
 import {
+    Body,
     Controller,
     Delete,
     Get,
     HttpStatus,
     Inject,
+    Param,
+    ParseIntPipe,
     Post,
     Put,
-    Req,
     Res,
     UseGuards,
 } from "@nestjs/common";
 import { IUserService, SUserService } from "./user.service.js";
-import { Request, Response } from "express";
+import { Response } from "express";
 import { RegisterDto, LoginDto } from "./types.js";
 import { matchingString } from "../util/bcrypt.js";
 import { JwtService } from "@nestjs/jwt";
 import { AuthGuard } from "./auth.guard.js";
+import { User } from "../util/decorator.js";
 
 @Controller("users")
 export class UserController {
@@ -39,13 +42,11 @@ export class UserController {
 
     @Get("id/:id")
     public async findUserById(
-        @Req() req: Request<{ id: number }, never, never, never>,
+        @Param("id", ParseIntPipe) id: number,
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const user = await this.userSvc.findUserByIdExcPassword(
-                req.params.id,
-            );
+            const user = await this.userSvc.findUserByIdExcPassword(id);
             if (user == null) {
                 return res.status(HttpStatus.NOT_FOUND).send("User not found");
             }
@@ -59,16 +60,16 @@ export class UserController {
 
     @Post("register")
     public async register(
-        @Req() req: Request<never, never, RegisterDto, never>,
+        @Body() data: RegisterDto,
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            if (req.body.password !== req.body.confirmPassword) {
+            if (data.password !== data.confirmPassword) {
                 return res
                     .status(HttpStatus.BAD_REQUEST)
                     .send("Unmatching password and confirmPassword");
             }
-            const result = await this.userSvc.create(req.body);
+            const result = await this.userSvc.create(data);
 
             if (!result) {
                 console.log(result);
@@ -87,12 +88,12 @@ export class UserController {
     @UseGuards(AuthGuard)
     @Get("my-info")
     public async getMyInfo(
-        @Req() req: Request<never, never, never, never>,
+        @User() currentUser: { userId: number; name: string },
         @Res() res: Response,
     ): Promise<Response> {
         try {
             const user = await this.userSvc.findUserByIdExcPassword(
-                req.user.userId,
+                currentUser.userId,
             );
             if (!user) {
                 return res.status(HttpStatus.NOT_FOUND).send("User not found");
@@ -107,21 +108,22 @@ export class UserController {
 
     @Post("login")
     public async login(
-        @Req() req: Request<never, never, LoginDto, never>,
+        @Body() data: LoginDto,
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const u = await this.userSvc.findRawUserByEmail(req.body.email);
+            const u = await this.userSvc.findRawUserByEmail(data.email);
             if (!u) {
                 return res.status(HttpStatus.NOT_FOUND).send("User not found");
             }
 
-            if (!(await matchingString(req.body.password, u.password))) {
+            if (!(await matchingString(data.password, u.password))) {
                 return res
                     .status(HttpStatus.BAD_REQUEST)
                     .send("Invalid credentials");
             }
 
+            u.password = "";
             const token = await this.jwtService.signAsync(
                 {
                     userId: u.id,
@@ -146,13 +148,14 @@ export class UserController {
     @UseGuards(AuthGuard)
     @Put("")
     public async updateName(
-        @Req() req: Request<never, never, { name: string }, never>,
+        @User() currentUser: { userId: number; name: string },
+        @Body() data: { name: string },
         @Res() res: Response,
     ): Promise<Response> {
         try {
             const result = await this.userSvc.updateName(
-                req.user.userId,
-                req.body.name,
+                currentUser.userId,
+                data.name,
             );
 
             if (!result) {
@@ -171,36 +174,31 @@ export class UserController {
     @UseGuards(AuthGuard)
     @Put("change-password")
     public async changePassword(
-        @Req()
-        req: Request<
-            never,
-            never,
-            { password: string; confirmPassword: string },
-            never
-        >,
+        @User() currentUser: { userId: number; name: string },
+        @Body() data: { password: string; confirmPassword: string },
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            if (req.body.password !== req.body.confirmPassword) {
+            if (data.password !== data.confirmPassword) {
                 return res
                     .status(HttpStatus.BAD_REQUEST)
                     .send("Unmatching password and confirmPassword");
             }
 
-            const u = await this.userSvc.findRawUserById(req.user.userId);
+            const u = await this.userSvc.findRawUserById(currentUser.userId);
             if (!u) {
                 return res.status(HttpStatus.NOT_FOUND).send("User not found");
             }
 
-            if (!(await matchingString(req.body.password, u.password))) {
+            if (!(await matchingString(data.password, u.password))) {
                 return res
                     .status(HttpStatus.BAD_REQUEST)
                     .send("Invalid credentials");
             }
 
             const result = await this.userSvc.changePassword(
-                req.user.userId,
-                req.body.password,
+                currentUser.userId,
+                data.password,
             );
 
             if (!result) {
@@ -219,11 +217,11 @@ export class UserController {
     @UseGuards(AuthGuard)
     @Delete("")
     public async deleteMyAccount(
-        @Req() req: Request<never, never, never, never>,
+        @User() currentUser: { userId: number; name: string },
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const result = await this.userSvc.delete(req.user.userId);
+            const result = await this.userSvc.delete(currentUser.userId);
             if (!result) {
                 return res.status(HttpStatus.NOT_FOUND).send("User not found");
             }

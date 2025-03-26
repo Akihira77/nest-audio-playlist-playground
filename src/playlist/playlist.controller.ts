@@ -1,19 +1,24 @@
 import {
+    Body,
     Controller,
     Delete,
     Get,
+    HttpException,
     HttpStatus,
     Inject,
+    Param,
+    ParseIntPipe,
     Patch,
     Post,
-    Req,
+    Query,
     Res,
     UseGuards,
 } from "@nestjs/common";
 import { AuthGuard } from "../user/auth.guard.js";
-import { Request, Response } from "express";
+import { Response } from "express";
 import { CreatePlaylistDTO } from "./types.js";
 import { IPlaylistService, SPlaylistService } from "./playlist.service.js";
+import { User } from "../util/decorator.js";
 
 @Controller("playlists")
 @UseGuards(AuthGuard)
@@ -25,12 +30,12 @@ export class PlaylistController {
 
     @Get("")
     public async findAllMyPlaylists(
-        @Req() req: Request<never, never, never, never>,
+        @User() currentUser: { userId: number; name: string },
         @Res() res: Response,
     ): Promise<Response> {
         try {
             const playlists = await this.playlistService.findMyPlaylists(
-                req.user.userId,
+                currentUser.userId,
             );
 
             return res.status(HttpStatus.OK).json({ playlists });
@@ -42,14 +47,13 @@ export class PlaylistController {
 
     @Get(":playlistId")
     public async openAPlaylist(
-        @Req() req: Request<{ playlistId: number }, never, never, never>,
+        @Param("playlistId", ParseIntPipe) playlistId: number,
         @Res() res: Response,
     ): Promise<Response> {
         try {
             const result =
                 await this.playlistService.findMyPlaylistPreloadAudios(
-                    req.user.userId,
-                    req.params.playlistId,
+                    playlistId,
                 );
 
             if (!result) {
@@ -67,11 +71,11 @@ export class PlaylistController {
 
     @Post("")
     public async create(
-        @Req() req: Request<never, never, CreatePlaylistDTO, never>,
+        @Body() data: CreatePlaylistDTO,
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const result = await this.playlistService.create(req.body);
+            const result = await this.playlistService.create(data);
             if (!result) {
                 throw new Error("Failed creating playlist");
             }
@@ -85,14 +89,14 @@ export class PlaylistController {
 
     @Patch(":playlistId")
     public async editPlaylistMetadata(
-        @Req()
-        req: Request<{ playlistId: number }, never, CreatePlaylistDTO, never>,
+        @Param("playlistId", ParseIntPipe) playlistId: number,
+        @Body() data: CreatePlaylistDTO,
         @Res() res: Response,
     ): Promise<Response> {
         try {
             const result = await this.playlistService.editPlaylistMetadata(
-                req.params.playlistId,
-                req.body,
+                playlistId,
+                data,
             );
             if (!result) {
                 throw new Error("Failed updating playlist");
@@ -107,55 +111,43 @@ export class PlaylistController {
 
     @Post("add")
     public async addAudioInPlaylist(
-        @Req()
-        req: Request<
-            never,
-            never,
-            never,
-            {
-                playlistId: number;
-                audioId: number;
-            }
-        >,
+        @Query() query: { playlistId: number; audioId: number },
         @Res() res: Response,
     ): Promise<Response> {
         try {
             const result = await this.playlistService.addAudioInPlaylist(
-                req.query.playlistId,
-                req.query.audioId,
+                query.playlistId,
+                query.audioId,
             );
 
             if (!result) {
                 throw new Error("Failed adding audio in a playlist");
             }
 
-            return res
-                .status(HttpStatus.OK)
-                .send("Success adding audio in a playlist");
-        } catch (error) {
+            return res.status(HttpStatus.OK).send({ playlist: result });
+        } catch (error: unknown) {
             console.error(`${this.addAudioInPlaylist.name} error`, error);
+
+            if (error instanceof HttpException) {
+                return res.status(error.getStatus()).send({
+                    stack_trace: error.stack,
+                    error: error.message,
+                });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
 
     @Delete("remove")
     public async removeAudioInPlaylist(
-        @Req()
-        req: Request<
-            never,
-            never,
-            never,
-            {
-                playlistId: number;
-                audioId: number;
-            }
-        >,
+        @Query() query: { playlistId: number; audioId: number },
         @Res() res: Response,
     ): Promise<Response> {
         try {
             const result = await this.playlistService.removeAudioInPlaylist(
-                req.query.playlistId,
-                req.query.audioId,
+                query.playlistId,
+                query.audioId,
             );
 
             if (!result) {
@@ -173,14 +165,12 @@ export class PlaylistController {
 
     @Delete(":playlistId")
     public async deleteMyPlaylist(
-        @Req()
-        req: Request<{ playlistId: number }, never, never, never>,
+        @Param("playlistId", ParseIntPipe) playlistId: number,
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const result = await this.playlistService.deletePlaylist(
-                req.params.playlistId,
-            );
+            const result =
+                await this.playlistService.deletePlaylist(playlistId);
 
             if (!result) {
                 throw new Error("Failed deleting a playlist");

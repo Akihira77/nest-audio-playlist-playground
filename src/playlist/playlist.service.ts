@@ -6,16 +6,13 @@ import { InjectRepository } from "@nestjs/typeorm";
 
 export interface IPlaylistService {
     create(data: CreatePlaylistDTO): Promise<Playlist>;
-    addAudioInPlaylist(playlistId: number, audioId: number): Promise<boolean>;
+    addAudioInPlaylist(playlistId: number, audioId: number): Promise<Playlist>;
     editPlaylistMetadata(
         playlistId: number,
         data: CreatePlaylistDTO,
     ): Promise<Playlist>;
     findMyPlaylists(userId: number): Promise<Playlist[]>;
-    findMyPlaylistPreloadAudios(
-        userId: number,
-        playlistId: number,
-    ): Promise<Playlist | null>;
+    findMyPlaylistPreloadAudios(playlistId: number): Promise<Playlist | null>;
     removeAudioInPlaylist(
         playlistId: number,
         audioId: number,
@@ -49,17 +46,17 @@ export class PlaylistService implements IPlaylistService {
     async addAudioInPlaylist(
         playlistId: number,
         audioId: number,
-    ): Promise<boolean> {
+    ): Promise<Playlist> {
         const queryRunner =
             this.playlistRepository.manager.connection.createQueryRunner();
         await queryRunner.connect();
-        await queryRunner.startTransaction();
 
         try {
-            // Find the playlist and audio, including relations if necessary
+            await queryRunner.startTransaction();
+
             const playlist = await queryRunner.manager.findOne(Playlist, {
                 where: { id: playlistId },
-                relations: ["audios"], // Include current audios in the playlist
+                relations: ["audios"],
             });
             const audio = await queryRunner.manager.findOne(Audio, {
                 where: { id: audioId },
@@ -72,28 +69,26 @@ export class PlaylistService implements IPlaylistService {
                 );
             }
 
-            // Add the audio to the playlist's existing audios (if not already added)
             const audios = await playlist.audios;
+            const isAudioInPlaylist = audios.some((a) => a.id == audioId);
+            if (isAudioInPlaylist) {
+                throw new HttpException(
+                    "Audio already exists in the playlist",
+                    HttpStatus.BAD_REQUEST,
+                );
+            }
+
             audios.push(audio);
+            playlist.audioCount++;
 
-            // Increment audioCount in the playlist table
-            await queryRunner.manager.increment(
-                Playlist,
-                { id: playlistId },
-                "audioCount",
-                1,
-            );
-
-            // Save the playlist with the updated audios array
             await queryRunner.manager.save(Playlist, playlist);
 
-            // Commit the transaction
             await queryRunner.commitTransaction();
-            return true;
+            return playlist;
         } catch (error) {
             await queryRunner.rollbackTransaction();
             console.error(`${this.addAudioInPlaylist.name} error`, error);
-            return false;
+            throw error;
         } finally {
             await queryRunner.release();
         }
@@ -102,17 +97,30 @@ export class PlaylistService implements IPlaylistService {
         playlistId: number,
         data: CreatePlaylistDTO,
     ): Promise<Playlist | undefined> {
+        const queryRunner =
+            this.playlistRepository.manager.connection.createQueryRunner();
+        await queryRunner.connect();
+
         try {
-            await this.playlistRepository.update(
+            await queryRunner.startTransaction("SERIALIZABLE");
+
+            await queryRunner.manager.update(
+                Playlist,
                 { id: playlistId },
                 { name: data.name, isPublic: data.isPublic },
             );
-            return await this.playlistRepository.findOne({
+
+            await queryRunner.commitTransaction();
+
+            return await queryRunner.manager.findOne(Playlist, {
                 where: { id: playlistId },
             });
         } catch (error) {
+            await queryRunner.rollbackTransaction();
             console.error(`${this.editPlaylistMetadata.name} error`, error);
-            return undefined;
+            throw error;
+        } finally {
+            await queryRunner.release();
         }
     }
 
@@ -128,17 +136,14 @@ export class PlaylistService implements IPlaylistService {
     }
 
     async findMyPlaylistPreloadAudios(
-        userId: number,
         playlistId: number,
     ): Promise<Playlist | null> {
         try {
-            // Load playlist with audios and check user ownership
             const playlist = await this.playlistRepository.findOne({
                 where: {
                     id: playlistId,
-                    user: { id: userId },
                 },
-                relations: ["audios"], // Preload audios
+                relations: ["audios"],
             });
 
             return playlist;
@@ -158,27 +163,23 @@ export class PlaylistService implements IPlaylistService {
         const queryRunner =
             this.playlistRepository.manager.connection.createQueryRunner();
         await queryRunner.connect();
-        await queryRunner.startTransaction();
 
         try {
-            // Load the playlist with its audios (to modify the list)
-            const playlist = await this.playlistRepository.findOne({
+            await queryRunner.startTransaction("SERIALIZABLE");
+
+            const playlist = await queryRunner.manager.findOne(Playlist, {
                 where: { id: playlistId },
                 relations: ["audios"],
+                lock: { mode: "pessimistic_write" },
             });
 
             if (!playlist) throw new Error("Playlist not found");
 
-            // Filter out the audio to remove it from the playlist
-            const audios = await playlist.audios;
-            playlist.audios = Promise.resolve(
-                audios.filter((audio) => audio.id !== audioId),
-            );
+            let audios = await playlist.audios;
+            audios = audios.filter((audio) => audio.id != audioId);
 
-            // Update audioCount and save the updated playlist
-            playlist.audioCount = audios.length;
+            playlist.audioCount--;
 
-            // Save changes within the transaction
             await queryRunner.manager.save(playlist);
             await queryRunner.commitTransaction();
 
@@ -193,14 +194,25 @@ export class PlaylistService implements IPlaylistService {
     }
 
     async deletePlaylist(playlistId: number): Promise<boolean> {
+        const queryRunner =
+            this.playlistRepository.manager.connection.createQueryRunner();
+        await queryRunner.connect();
+
         try {
-            const result = await this.playlistRepository.delete({
+            await queryRunner.startTransaction("SERIALIZABLE");
+
+            const result = await queryRunner.manager.delete(Playlist, {
                 id: playlistId,
             });
+
+            await queryRunner.commitTransaction();
             return result.affected > 0;
         } catch (error) {
+            await queryRunner.rollbackTransaction();
             console.error(`${this.deletePlaylist.name} error`, error);
             return false;
+        } finally {
+            await queryRunner.release();
         }
     }
 }
