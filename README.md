@@ -1,7 +1,8 @@
 
 # Overview
 This is a Nest Audio Playlist Playground API. Build with NestJS (Typescript), TypeORM,
-PostgreSQL, Redis.
+PostgreSQL, Redis, and Amazon S3.  
+For playing audio testing purpose I have provided an HTML file that you can open it using browser.
 
 # Feature
 1. User can perform CRUD for their account  
