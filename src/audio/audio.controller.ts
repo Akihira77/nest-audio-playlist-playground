@@ -22,7 +22,6 @@ import {
 import { Response } from "express";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { parseBuffer } from "music-metadata";
-import * as path from "path";
 import { AuthGuard } from "../user/auth.guard.js";
 import { IAudioService, SAudioService } from "./audio.service.js";
 import { UploadAudioDTO, Audio } from "./types.js";
@@ -35,7 +34,6 @@ import { ConfigService } from "@nestjs/config";
 
 @Controller("audios")
 export class AudioController {
-    private readonly uploadDir = "./uploads";
     constructor(
         @Inject(SAudioService) private readonly audioService: IAudioService,
         @Inject(SUserService) private readonly userService: IUserService,

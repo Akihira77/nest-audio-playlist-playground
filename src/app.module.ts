@@ -8,6 +8,8 @@ import { User } from "./user/types.js";
 import { Audio } from "./audio/types.js";
 import { Playlist } from "./playlist/types.js";
 import { CustomCacheModule } from "./cache/cache.module.js";
+import { ScheduleModule } from "@nestjs/schedule";
+import { CleanupJobService } from "./cleanup-job/cleanup-job.service.js";
 
 @Module({
     imports: [
@@ -21,7 +23,7 @@ import { CustomCacheModule } from "./cache/cache.module.js";
             password: process.env.POSTGRES_PASSWORD,
             database: process.env.POSTGRES_DATABASE,
             entities: [User, Audio, Playlist],
-            synchronize: true,
+            synchronize: false,
             logging: ["query", "error"],
         }),
 
@@ -29,8 +31,11 @@ import { CustomCacheModule } from "./cache/cache.module.js";
         UserModule,
         AudioModule,
         PlaylistModule,
+
+        //INFO: Background Module
+        ScheduleModule.forRoot(),
     ],
     controllers: [],
-    providers: [],
+    providers: [CleanupJobService],
 })
 export class AppModule {}
