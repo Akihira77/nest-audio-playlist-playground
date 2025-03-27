@@ -208,6 +208,10 @@ export class UserController {
             }
 
             await this.cacheService.set(`user_${user.id}`, user, 0);
+
+            const users = await this.userSvc.findAll();
+            await this.cacheService.set("users", users);
+
             return res.status(HttpStatus.OK).json({ user: user });
         } catch (error) {
             console.error(`${this.updateName.name} error`, error);
@@ -272,6 +276,10 @@ export class UserController {
             }
 
             await this.cacheService.delete(`user_${currentUser.userId}`);
+
+            const users = await this.userSvc.findAll();
+            await this.cacheService.set("users", users);
+
             return res.sendStatus(HttpStatus.NO_CONTENT);
         } catch (error) {
             console.error(`${this.deleteMyAccount.name} error`, error);
