@@ -24,7 +24,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "localhost:3000/api/users/:id",
+							"raw": "localhost:3000/api/users/id/:id",
 							"host": [
 								"localhost"
 							],
@@ -32,12 +32,13 @@
 							"path": [
 								"api",
 								"users",
+								"id",
 								":id"
 							],
 							"variable": [
 								{
 									"key": "id",
-									"value": "30c31524-75cf-4b2c-939a-606148ea102b"
+									"value": "8"
 								}
 							]
 						}
@@ -54,13 +55,13 @@
 					"response": []
 				},
 				{
-					"name": "Create User",
+					"name": "Register",
 					"request": {
 						"method": "POST",
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"name\": \"Andika Wahyu\",\r\n    \"email\": \"andika1@mail.com\",\r\n    \"password\": \"andikawp00\",\r\n    \"confirmPassword\": \"andikawp00\"\r\n}",
+							"raw": "{\r\n    \"name\": \"Andika Wahyu 5000\",\r\n    \"email\": \"andika1@mail.com\",\r\n    \"password\": \"andikawp00\",\r\n    \"confirmPassword\": \"andikawp00\"\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -85,7 +86,7 @@
 								}
 							}
 						},
-						"url": "localhost:3000/api/users/login"
+						"url": "http://localhost:3000/api/users/login"
 					},
 					"response": []
 				},
@@ -96,7 +97,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"name\": \"Andika Wahyu Permadi\"\r\n}",
+							"raw": "{\r\n    \"name\": \"Andika Wahyu Permadi yang pertama\"\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -123,7 +124,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"password\": \"\",\r\n    \"confirmPassword\": \"\"\r\n}",
+							"raw": "{\r\n    \"password\": \"adwad\",\r\n    \"confirmPassword\": \"awdwadwad\"\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -154,7 +155,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "localhost:3000/api/audios/search?query=soekarno",
+							"raw": "localhost:3000/api/audios/search?query=budiman",
 							"host": [
 								"localhost"
 							],
@@ -167,7 +168,7 @@
 							"query": [
 								{
 									"key": "query",
-									"value": "soekarno"
+									"value": "budiman"
 								}
 							]
 						}
@@ -180,7 +181,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "localhost:3000/api/audios/:id",
+							"raw": "localhost:3000/api/audios/id/:id",
 							"host": [
 								"localhost"
 							],
@@ -188,12 +189,13 @@
 							"path": [
 								"api",
 								"audios",
+								"id",
 								":id"
 							],
 							"variable": [
 								{
 									"key": "id",
-									"value": "1"
+									"value": "2"
 								}
 							]
 						}
@@ -217,8 +219,7 @@
 							{
 								"key": "Range",
 								"value": "bytes=0-",
-								"type": "text",
-								"disabled": true
+								"type": "text"
 							}
 						],
 						"url": {
@@ -236,7 +237,7 @@
 							"variable": [
 								{
 									"key": "audioId",
-									"value": "40"
+									"value": "2"
 								}
 							]
 						}
@@ -253,23 +254,23 @@
 							"formdata": [
 								{
 									"key": "title",
-									"value": "Garuda Pancasila",
+									"value": "To Be Human",
 									"type": "text"
 								},
 								{
 									"key": "creator",
-									"value": "Ir. Soekarno",
+									"value": "Nightcore",
 									"type": "text"
 								},
 								{
 									"key": "publishAt",
-									"value": "2000",
+									"value": "2004",
 									"type": "text"
 								},
 								{
 									"key": "file",
 									"type": "file",
-									"src": "/D:/Files/Audios/Garuda Pancasila - Lagu Nasional Indonesia (dengan Lirik) - Lagu Nasional Indonesia (youtube).mp3"
+									"src": "/D:/Files/Audios/Nightcore - To Be Human __ lyrics - Blake (youtube).mp3"
 								}
 							]
 						},
@@ -284,7 +285,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"like\": true\r\n}",
+							"raw": "{\r\n    \"like\": false\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -305,7 +306,7 @@
 							"variable": [
 								{
 									"key": "audioId",
-									"value": "41"
+									"value": "3"
 								}
 							]
 						}
@@ -322,7 +323,7 @@
 							"formdata": [
 								{
 									"key": "title",
-									"value": "Garuda Pancasila",
+									"value": "Indonesia Raya",
 									"type": "text"
 								},
 								{
@@ -357,7 +358,7 @@
 							"variable": [
 								{
 									"key": "audioId",
-									"value": "40"
+									"value": "3"
 								}
 							]
 						}
@@ -383,7 +384,7 @@
 							"variable": [
 								{
 									"key": "audioId",
-									"value": "40"
+									"value": "3"
 								}
 							]
 						}
@@ -423,7 +424,7 @@
 							"variable": [
 								{
 									"key": "playlistId",
-									"value": "4"
+									"value": "1"
 								}
 							]
 						}
@@ -437,7 +438,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"name\": \"Lagu Kebangsaan\",\r\n    \"isPublic\": true\r\n}",
+							"raw": "{\r\n    \"name\": \"Lagu Kebangsaanku\",\r\n    \"isPublic\": true\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -454,7 +455,7 @@
 						"method": "POST",
 						"header": [],
 						"url": {
-							"raw": "localhost:3000/api/playlists/add?playlistId=4&audioId=40",
+							"raw": "localhost:3000/api/playlists/add?playlistId=1&audioId=4",
 							"host": [
 								"localhost"
 							],
@@ -467,11 +468,11 @@
 							"query": [
 								{
 									"key": "playlistId",
-									"value": "4"
+									"value": "1"
 								},
 								{
 									"key": "audioId",
-									"value": "40"
+									"value": "4"
 								}
 							]
 						}
@@ -506,7 +507,7 @@
 							"variable": [
 								{
 									"key": "playlistId",
-									"value": "4"
+									"value": "1"
 								}
 							]
 						}
@@ -519,7 +520,7 @@
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "localhost:3000/api/playlists/remove?playlistId&audioId",
+							"raw": "localhost:3000/api/playlists/remove?playlistId=1&audioId=4",
 							"host": [
 								"localhost"
 							],
@@ -532,11 +533,11 @@
 							"query": [
 								{
 									"key": "playlistId",
-									"value": null
+									"value": "1"
 								},
 								{
 									"key": "audioId",
-									"value": null
+									"value": "4"
 								}
 							]
 						}
@@ -562,7 +563,7 @@
 							"variable": [
 								{
 									"key": "playlistId",
-									"value": ""
+									"value": "1"
 								}
 							]
 						}
