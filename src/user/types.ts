@@ -20,6 +20,9 @@ export type LoginDto = {
     password: string;
 };
 
+export type UserType = typeof User;
+export type UsersType = (typeof User)[];
+
 @Entity("users")
 export class User {
     @PrimaryGeneratedColumn()

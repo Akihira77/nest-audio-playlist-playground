@@ -4,10 +4,12 @@ import { UserController } from "./user.controller.js";
 import { SUserService, UserService } from "./user.service.js";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "./types.js";
+import { CustomCacheModule } from "../cache/cache.module.js";
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([User]),
+        CustomCacheModule,
         JwtModule.register({
             global: true,
             secret: process.env.JWT_SECRET,

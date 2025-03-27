@@ -1,1 +1,2 @@
 export const PG_CONNECTION = "PG_CONNECTION";
+export const CUSTOM_CACHE = "CUSTOM_CACHE";

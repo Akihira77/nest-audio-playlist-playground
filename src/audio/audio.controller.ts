@@ -24,29 +24,33 @@ import { parseBuffer } from "music-metadata";
 import * as path from "path";
 import { AuthGuard } from "../user/auth.guard.js";
 import { IAudioService, SAudioService } from "./audio.service.js";
-import { UploadAudioDTO } from "./types.js";
+import { UploadAudioDTO, Audio } from "./types.js";
 import { generateRandomFileName } from "../util/common.js";
 import { writeFile } from "fs/promises";
 import { createReadStream, statSync } from "fs";
 import { User } from "../util/decorator.js";
 import { IUserService, SUserService } from "../user/user.service.js";
+import { CacheService } from "../cache/cache.service.js";
 
 @Controller("audios")
 export class AudioController {
     private readonly uploadDir = "./uploads";
     constructor(
-        @Inject(SAudioService)
-        private readonly audioService: IAudioService,
-        @Inject(SUserService)
-        private readonly userService: IUserService,
+        @Inject(SAudioService) private readonly audioService: IAudioService,
+        @Inject(SUserService) private readonly userService: IUserService,
+        private readonly cacheService: CacheService,
     ) {}
 
     @Get("")
     public async findAll(@Res() res: Response): Promise<Response> {
         try {
-            const all = await this.audioService.findAll();
+            let audios = await this.cacheService.get("audios_all");
+            if (audios == null) {
+                audios = await this.audioService.findAll();
+                await this.cacheService.set("audios_all", audios);
+            }
 
-            return res.status(HttpStatus.OK).json({ audios: all });
+            return res.status(HttpStatus.OK).json({ audios: audios });
         } catch (error) {
             console.error(`${this.findAll.name} error`, error);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
@@ -59,11 +63,20 @@ export class AudioController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const result = await this.audioService.audiosQuerySearch(
-                queryParams.query ?? "",
+            let audios = await this.cacheService.get(
+                `audios:query?${queryParams.query}`,
             );
+            if (audios == null) {
+                audios = await this.audioService.audiosQuerySearch(
+                    queryParams.query ?? "",
+                );
+                await this.cacheService.set(
+                    `audios:query?${queryParams.query}`,
+                    audios,
+                );
+            }
 
-            return res.status(HttpStatus.OK).json({ audios: result });
+            return res.status(HttpStatus.OK).json({ audios: audios });
         } catch (error) {
             console.error(`${this.audiosQuerySearch.name} error`, error);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
@@ -77,11 +90,21 @@ export class AudioController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const all = await this.audioService.findAllByUserId(
-                currentUser.userId,
+            let audios = await this.cacheService.get(
+                `audios:user?${currentUser.userId}`,
             );
+            if (audios == null) {
+                audios = await this.audioService.findAllByUserId(
+                    currentUser.userId,
+                );
+                await this.cacheService.set(
+                    `audios:user?${currentUser.userId}`,
+                    audios,
+                    0,
+                );
+            }
 
-            return res.status(HttpStatus.OK).json({ audios: all });
+            return res.status(HttpStatus.OK).json({ audios: audios });
         } catch (error) {
             console.error(`${this.findAll.name} error`, error);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
@@ -95,11 +118,22 @@ export class AudioController {
         @Res() res: Response,
     ): Promise<Response | StreamableFile> {
         try {
-            const a = await this.audioService.findAudioById(audioId);
-            if (!a) {
-                return res.status(HttpStatus.NOT_FOUND).send("Audio not found");
+            let audio = (await this.cacheService.get(
+                `audio_${audioId}`,
+            )) as Audio;
+            if (audio == null) {
+                audio = await this.audioService.findAudioById(audioId);
+
+                if (audio == null) {
+                    return res
+                        .status(HttpStatus.NOT_FOUND)
+                        .send("Audio not found");
+                }
+
+                await this.cacheService.set(`audio_${audioId}`, audio, 0);
             }
-            const filePath = path.join(this.uploadDir, a.file_path);
+
+            const filePath = path.join(this.uploadDir, audio.file_path);
             const stat = statSync(filePath);
             const fileSize = stat.size;
 
@@ -156,12 +190,20 @@ export class AudioController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const a = await this.audioService.findAudioById(id);
-            if (!a) {
-                return res.status(HttpStatus.NOT_FOUND).send("Audio not found");
+            let audio = await this.cacheService.get(`audio_${id}`);
+            if (audio == null) {
+                audio = await this.audioService.findAudioById(id);
+
+                if (audio == null) {
+                    return res
+                        .status(HttpStatus.NOT_FOUND)
+                        .send("Audio not found");
+                }
+
+                await this.cacheService.set(`audio_${id}`, audio, 0);
             }
 
-            return res.status(HttpStatus.OK).json({ audio: a });
+            return res.status(HttpStatus.OK).json({ audio: audio });
         } catch (error) {
             console.error(`${this.findAudioById.name} error`, error);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
@@ -202,19 +244,20 @@ export class AudioController {
                 file_path: fileName,
             };
 
-            const [_, result] = await Promise.all([
+            const [_, audio] = await Promise.all([
                 writeFile(filePath, file.buffer),
                 this.audioService.upload(uploadedData, user),
             ]);
 
-            if (!result) {
+            if (!audio) {
                 return res
                     .status(HttpStatus.BAD_REQUEST)
                     .send("Failed uploading file");
             }
 
+            await this.cacheService.set(`audio_${audio.id}`, audio, 0);
             return res.status(HttpStatus.OK).json({
-                audio: result,
+                audio: audio,
             });
         } catch (error) {
             console.error(`${this.upload.name} error`, error);
@@ -264,15 +307,16 @@ export class AudioController {
                 writeFile(filePath, file.buffer);
             }
 
-            const result = await this.audioService.update(audioId, audioFromDb);
-            if (!result) {
+            const audio = await this.audioService.update(audioId, audioFromDb);
+            if (!audio) {
                 return res
                     .status(HttpStatus.BAD_REQUEST)
                     .send("Error updating audio");
             }
 
+            await this.cacheService.set(`audio_${audio.id}`, audio, 0);
             return res.status(HttpStatus.OK).json({
-                audio: result,
+                audio: audio,
             });
         } catch (error) {
             console.error(`${this.updateMyAudio.name} error`, error);
@@ -295,6 +339,7 @@ export class AudioController {
 
             const audio = await this.audioService.editLike(audioId, num);
 
+            await this.cacheService.set(`audio_${audio.id}`, audio, 0);
             return res.status(HttpStatus.OK).json({
                 audio: audio,
             });
@@ -312,17 +357,17 @@ export class AudioController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const a = await this.audioService.findMyAudio(
+            const audio = await this.audioService.findMyAudio(
                 audioId,
                 currentUser.userId,
             );
-            if (!a) {
+            if (!audio) {
                 return res.status(HttpStatus.NOT_FOUND).send("Audio not found");
             }
 
             const result = await this.audioService.delete(
-                a.id,
-                path.join(this.uploadDir, a.file_path),
+                audio.id,
+                path.join(this.uploadDir, audio.file_path),
             );
             if (!result) {
                 return res
@@ -330,6 +375,7 @@ export class AudioController {
                     .send("Error deleting audio");
             }
 
+            await this.cacheService.delete(`audio_${audioId}`);
             return res.status(HttpStatus.OK).json({
                 message: "Deleting file success",
             });

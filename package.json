@@ -18,12 +18,11 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
-    "dbgenerate": "drizzle-kit generate --config=./src/drizzle.config.ts",
-    "dbpush:script": "npm ./src/drizzle/migrate.ts",
-    "dbpush": "drizzle-kit push --config=./src/drizzle.config.ts"
+    "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@keyv/redis": "^4.3.2",
+    "@nestjs/cache-manager": "^3.0.1",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.2.3",
     "@nestjs/core": "^10.0.0",
@@ -31,6 +30,8 @@
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/typeorm": "^11.0.0",
     "bcrypt": "^5.1.1",
+    "cache-manager": "^6.4.1",
+    "cacheable": "^1.8.9",
     "cookie-parser": "^1.4.6",
     "music-metadata": "^10.5.0",
     "pg": "^8.13.0",

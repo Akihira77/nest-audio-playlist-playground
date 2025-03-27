@@ -7,10 +7,12 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "./user/types.js";
 import { Audio } from "./audio/types.js";
 import { Playlist } from "./playlist/types.js";
+import { CustomCacheModule } from "./cache/cache.module.js";
 
 @Module({
     imports: [
         ConfigModule.forRoot({ isGlobal: true }),
+        CustomCacheModule,
         TypeOrmModule.forRoot({
             type: "postgres",
             host: process.env.POSTGRES_HOST,
@@ -19,9 +21,11 @@ import { Playlist } from "./playlist/types.js";
             password: process.env.POSTGRES_PASSWORD,
             database: process.env.POSTGRES_DATABASE,
             entities: [User, Audio, Playlist],
-            synchronize: true,
+            synchronize: false,
             logging: ["query", "error"],
         }),
+
+        //INFO: User Module
         UserModule,
         AudioModule,
         PlaylistModule,

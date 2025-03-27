@@ -19,19 +19,24 @@ import { matchingString } from "../util/bcrypt.js";
 import { JwtService } from "@nestjs/jwt";
 import { AuthGuard } from "./auth.guard.js";
 import { User } from "../util/decorator.js";
+import { CacheService } from "../cache/cache.service.js";
 
 @Controller("users")
 export class UserController {
     constructor(
-        @Inject(SUserService)
-        private readonly userSvc: IUserService,
+        @Inject(SUserService) private readonly userSvc: IUserService,
         private readonly jwtService: JwtService,
+        private readonly cacheService: CacheService,
     ) {}
 
     @Get("")
     public async findAll(@Res() res: Response): Promise<Response> {
         try {
-            const users = await this.userSvc.findAll();
+            let users = await this.cacheService.get("users");
+            if (users == null) {
+                users = await this.userSvc.findAll();
+                await this.cacheService.set("users", users);
+            }
 
             return res.status(HttpStatus.OK).json({ users });
         } catch (error) {
@@ -46,9 +51,17 @@ export class UserController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const user = await this.userSvc.findUserByIdExcPassword(id);
+            let user = await this.cacheService.get(`user_${id}`);
             if (user == null) {
-                return res.status(HttpStatus.NOT_FOUND).send("User not found");
+                user = await this.userSvc.findUserByIdExcPassword(id);
+
+                if (user == null) {
+                    return res
+                        .status(HttpStatus.NOT_FOUND)
+                        .send("User not found");
+                }
+
+                await this.cacheService.set(`user_${id}`, user, 0);
             }
 
             return res.status(HttpStatus.OK).json({ user });
@@ -69,16 +82,16 @@ export class UserController {
                     .status(HttpStatus.BAD_REQUEST)
                     .send("Unmatching password and confirmPassword");
             }
-            const result = await this.userSvc.create(data);
+            const user = await this.userSvc.create(data);
 
-            if (!result) {
-                console.log(result);
+            if (!user) {
                 return res
                     .status(HttpStatus.BAD_REQUEST)
                     .send("Error creating account");
             }
 
-            return res.status(HttpStatus.CREATED).json({ user: result });
+            await this.cacheService.set(`user_${user.id}`, user, 0);
+            return res.status(HttpStatus.CREATED).json({ user: user });
         } catch (error) {
             console.error(`${this.register.name} error`, error);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
@@ -92,11 +105,25 @@ export class UserController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const user = await this.userSvc.findUserByIdExcPassword(
-                currentUser.userId,
+            let user = await this.cacheService.get(
+                `user_${currentUser.userId}`,
             );
-            if (!user) {
-                return res.status(HttpStatus.NOT_FOUND).send("User not found");
+            if (user == null) {
+                user = await this.userSvc.findUserByIdExcPassword(
+                    currentUser.userId,
+                );
+
+                if (!user) {
+                    return res
+                        .status(HttpStatus.NOT_FOUND)
+                        .send("User not found");
+                }
+
+                await this.cacheService.set(
+                    `user_${currentUser.userId}`,
+                    user,
+                    0,
+                );
             }
 
             return res.status(HttpStatus.OK).json({ user });
@@ -153,18 +180,19 @@ export class UserController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const result = await this.userSvc.updateName(
+            const user = await this.userSvc.updateName(
                 currentUser.userId,
                 data.name,
             );
 
-            if (!result) {
+            if (user == null) {
                 return res
                     .status(HttpStatus.BAD_REQUEST)
                     .send("Error updating account");
             }
 
-            return res.status(HttpStatus.OK).json({ user: result });
+            await this.cacheService.set(`user_${user.id}`, user, 0);
+            return res.status(HttpStatus.OK).json({ user: user });
         } catch (error) {
             console.error(`${this.updateName.name} error`, error);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
@@ -185,29 +213,30 @@ export class UserController {
                     .send("Unmatching password and confirmPassword");
             }
 
-            const u = await this.userSvc.findRawUserById(currentUser.userId);
-            if (!u) {
+            let user = await this.userSvc.findRawUserById(currentUser.userId);
+            if (user == null) {
                 return res.status(HttpStatus.NOT_FOUND).send("User not found");
             }
 
-            if (!(await matchingString(data.password, u.password))) {
+            if (!(await matchingString(data.password, user.password))) {
                 return res
                     .status(HttpStatus.BAD_REQUEST)
                     .send("Invalid credentials");
             }
 
-            const result = await this.userSvc.changePassword(
+            user = await this.userSvc.changePassword(
                 currentUser.userId,
                 data.password,
             );
 
-            if (!result) {
+            if (!user) {
                 return res
                     .status(HttpStatus.BAD_REQUEST)
                     .send("Error updating account");
             }
 
-            return res.status(HttpStatus.OK).json({ user: result });
+            await this.cacheService.set(`user_${user.id}`, user, 0);
+            return res.status(HttpStatus.OK).json({ user: user });
         } catch (error) {
             console.error(`${this.changePassword.name} error`, error);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
@@ -226,6 +255,7 @@ export class UserController {
                 return res.status(HttpStatus.NOT_FOUND).send("User not found");
             }
 
+            await this.cacheService.delete(`user_${currentUser.userId}`);
             return res.sendStatus(HttpStatus.NO_CONTENT);
         } catch (error) {
             console.error(`${this.deleteMyAccount.name} error`, error);

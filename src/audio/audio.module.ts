@@ -6,6 +6,7 @@ import { AudioController } from "./audio.controller.js";
 import { SAudioService, AudioService } from "./audio.service.js";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Audio } from "../audio/types.js";
+import { CustomCacheModule } from "../cache/cache.module.js";
 
 @Module({
     controllers: [AudioController],
@@ -17,6 +18,7 @@ import { Audio } from "../audio/types.js";
     ],
     imports: [
         UserModule,
+        CustomCacheModule,
         TypeOrmModule.forFeature([Audio]),
         MulterModule.register({
             dest: "./uploads",
