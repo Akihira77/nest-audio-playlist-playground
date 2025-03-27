@@ -28,6 +28,7 @@ export type UploadAudioDTO = {
     creator: string;
     publishAt: number;
     file_path: string;
+    s3_key: string;
 };
 
 @Entity("audios")
@@ -51,6 +52,9 @@ export class Audio {
 
     @Column({ type: "varchar", length: 255 })
     file_path: string;
+
+    @Column({ type: "varchar", length: 255 })
+    s3_key: string;
 
     @Column({ type: "int", default: 0 })
     likes: number;

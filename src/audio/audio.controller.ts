@@ -4,6 +4,7 @@ import {
     Delete,
     Get,
     Headers,
+    HttpException,
     HttpStatus,
     Inject,
     Param,
@@ -26,11 +27,11 @@ import { AuthGuard } from "../user/auth.guard.js";
 import { IAudioService, SAudioService } from "./audio.service.js";
 import { UploadAudioDTO, Audio } from "./types.js";
 import { generateRandomFileName } from "../util/common.js";
-import { writeFile } from "fs/promises";
-import { createReadStream, statSync } from "fs";
 import { User } from "../util/decorator.js";
 import { IUserService, SUserService } from "../user/user.service.js";
 import { CacheService } from "../cache/cache.service.js";
+import { S3Service } from "../s3/s3.service.js";
+import { ConfigService } from "@nestjs/config";
 
 @Controller("audios")
 export class AudioController {
@@ -38,7 +39,9 @@ export class AudioController {
     constructor(
         @Inject(SAudioService) private readonly audioService: IAudioService,
         @Inject(SUserService) private readonly userService: IUserService,
+        private readonly s3Service: S3Service,
         private readonly cacheService: CacheService,
+        private readonly configService: ConfigService,
     ) {}
 
     @Get("")
@@ -133,17 +136,18 @@ export class AudioController {
                 await this.cacheService.set(`audio_${audioId}`, audio, 0);
             }
 
-            const filePath = path.join(this.uploadDir, audio.file_path);
-            const stat = statSync(filePath);
-            const fileSize = stat.size;
+            const [s3Stream, s3FileSize] = await Promise.all([
+                this.s3Service.getFileStream(audio.s3_key),
+                this.s3Service.getFileSize(audio.s3_key),
+            ]);
 
             if (!range) {
                 const head = {
-                    "Content-Length": fileSize,
+                    "Content-Length": s3FileSize,
                     "Content-Type": "audio/mpeg",
                 };
                 res.writeHead(HttpStatus.OK, head);
-                createReadStream(filePath).pipe(res);
+                s3Stream.pipe(res);
                 return;
             }
 
@@ -151,33 +155,37 @@ export class AudioController {
                 .replace(/bytes=/, "")
                 .split("-");
             const start = parseInt(startString, 10);
-            let end = endString ? parseInt(endString, 10) : fileSize - 1;
+            let end = endString ? parseInt(endString, 10) : s3FileSize - 1;
 
             console.log(
-                `filesize: ${fileSize}; start: ${startString}; end: ${endString}`,
+                `filesize: ${s3FileSize}; start: ${startString}; end: ${endString}`,
             );
-            if (end >= fileSize) {
-                end = fileSize - 1;
+            if (end >= s3FileSize) {
+                end = s3FileSize - 1;
             }
 
-            if (start >= fileSize || start > end || start < 0) {
+            if (start >= s3FileSize || start > end || start < 0) {
                 res.writeHead(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE, {
-                    "Content-Range": `bytes */${fileSize}`,
+                    "Content-Range": `bytes */${s3FileSize}`,
                 });
                 return res.end();
             }
 
             const chunkSize = end - start + 1;
-            const file = createReadStream(filePath, { start: start, end: end });
+            const partialStream = await this.s3Service.getPartialStream(
+                audio.s3_key,
+                start,
+                end,
+            );
             const head = {
-                "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+                "Content-Range": `bytes ${start}-${end}/${s3FileSize}`,
                 "Accept-Ranges": "bytes",
                 "Content-Length": chunkSize,
                 "Content-Type": "audio/mpeg",
             };
 
             res.writeHead(HttpStatus.PARTIAL_CONTENT, head);
-            file.pipe(res);
+            partialStream.pipe(res);
         } catch (error) {
             console.error(`${this.playAudio.name} error`, error);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
@@ -234,26 +242,26 @@ export class AudioController {
             }
 
             const fileName = generateRandomFileName(file.originalname);
-            const filePath = path.join(this.uploadDir, fileName);
-            const user = await this.userService.findRawUserById(
-                currentUser.userId,
+            const bucket = this.configService.get<string>("S3_BUCKET_NAME");
+            const key = `uploads/${Date.now()}-${fileName}`;
+            const url = await this.s3Service.uploadFile(
+                bucket,
+                key,
+                file.buffer,
+                file.mimetype,
             );
+
             const uploadedData: UploadAudioDTO = {
                 ...data,
                 duration: duration,
-                file_path: fileName,
+                file_path: url,
+                s3_key: key,
             };
 
-            const [_, audio] = await Promise.all([
-                writeFile(filePath, file.buffer),
-                this.audioService.upload(uploadedData, user),
-            ]);
-
-            if (!audio) {
-                return res
-                    .status(HttpStatus.BAD_REQUEST)
-                    .send("Failed uploading file");
-            }
+            const user = await this.userService.findRawUserById(
+                currentUser.userId,
+            );
+            const audio = await this.audioService.upload(uploadedData, user);
 
             await this.cacheService.set(`audio_${audio.id}`, audio, 0);
             return res.status(HttpStatus.OK).json({
@@ -290,21 +298,37 @@ export class AudioController {
                 ...data,
             };
             if (file) {
-                let filePath = path.join(this.uploadDir, audioFromDb.file_path);
-                this.audioService.removeFile(filePath);
+                const deleteResult = await this.s3Service.deleteFile(
+                    audioFromDb.s3_key,
+                );
+                if (!deleteResult) {
+                    throw new HttpException(
+                        "Failed to delete old audio file from S3",
+                        HttpStatus.BAD_REQUEST,
+                    );
+                }
 
                 const metadata = await parseBuffer(file.buffer, file.mimetype);
                 const duration = metadata.format.duration;
                 if (!duration || duration <= 0) {
-                    throw new Error("Invalid audio file");
+                    throw new HttpException(
+                        "Invalid audio file",
+                        HttpStatus.BAD_REQUEST,
+                    );
                 }
 
-                audioFromDb.file_path = generateRandomFileName(
-                    file.originalname,
+                const newS3Key = generateRandomFileName(file.originalname);
+                const newFilePath = `uploads/${newS3Key}`;
+                const uploadUrl = await this.s3Service.uploadFile(
+                    process.env.S3_BUCKET_NAME,
+                    newFilePath,
+                    file.buffer,
+                    file.mimetype,
                 );
+
+                audioFromDb.file_path = uploadUrl;
+                audioFromDb.s3_key = newS3Key;
                 audioFromDb.duration = duration;
-                filePath = path.join(this.uploadDir, audioFromDb.file_path);
-                writeFile(filePath, file.buffer);
             }
 
             const audio = await this.audioService.update(audioId, audioFromDb);
@@ -373,6 +397,15 @@ export class AudioController {
                 return res
                     .status(HttpStatus.BAD_REQUEST)
                     .send("Error deleting audio");
+            }
+
+            const s3DeleteResult = await this.s3Service.deleteFile(
+                audio.s3_key,
+            );
+            if (!s3DeleteResult) {
+                return res
+                    .status(HttpStatus.BAD_REQUEST)
+                    .send("Error deleting file from S3");
             }
 
             await this.cacheService.delete(`audio_${audioId}`);

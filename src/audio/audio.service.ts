@@ -120,7 +120,7 @@ export class AudioService implements IAudioService {
             return await this.audioRepository.save(audio);
         } catch (error) {
             this.logError(this.upload.name, error);
-            return undefined;
+            throw error;
         }
     }
 

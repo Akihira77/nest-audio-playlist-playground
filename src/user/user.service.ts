@@ -85,12 +85,7 @@ export class UserService implements IUserService {
 
             const savedUser = await this.userRepository.save(newUser);
 
-            return {
-                id: savedUser.id,
-                name: savedUser.name,
-                email: savedUser.email,
-                createdAt: savedUser.createdAt,
-            } as User;
+            return savedUser;
         } catch (error) {
             console.error(`${this.create.name} error`, error);
             return undefined;

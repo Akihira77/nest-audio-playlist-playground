@@ -7,6 +7,7 @@ import { SAudioService, AudioService } from "./audio.service.js";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Audio } from "../audio/types.js";
 import { CustomCacheModule } from "../cache/cache.module.js";
+import { S3Module } from "../s3/s3.module.js";
 
 @Module({
     controllers: [AudioController],
@@ -39,6 +40,7 @@ import { CustomCacheModule } from "../cache/cache.module.js";
                 callback(undefined, true);
             },
         }),
+        S3Module,
     ],
 })
 export class AudioModule {}
