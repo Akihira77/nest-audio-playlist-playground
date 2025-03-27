@@ -5,12 +5,14 @@ import { Playlist } from "../playlist/types.js";
 import { User } from "../user/types.js";
 import { DataSource } from "typeorm";
 import { CacheService } from "../cache/cache.service.js";
+import { S3Service } from "../s3/s3.service.js";
 
 @Injectable()
 export class CleanupJobService implements OnModuleInit {
     constructor(
         private readonly dataSource: DataSource,
         private readonly cacheService: CacheService,
+        private readonly s3Service: S3Service,
     ) {}
 
     async onModuleInit() {
@@ -30,7 +32,6 @@ export class CleanupJobService implements OnModuleInit {
 
             await queryRunner.startTransaction();
 
-            // Hapus relasi user_playlist di DB
             await queryRunner.query(`
                 DELETE FROM users_playlists up
                 WHERE up."playlistsId" IN (
@@ -39,7 +40,6 @@ export class CleanupJobService implements OnModuleInit {
                 )
             `);
 
-            // Hapus playlist yang dihapus
             const playlistsToDelete: { id: number }[] = await queryRunner.query(
                 `SELECT id FROM ${Playlist.name.toLowerCase()}s WHERE "deletedAt" IS NOT NULL`,
             );
@@ -48,16 +48,22 @@ export class CleanupJobService implements OnModuleInit {
                 `DELETE FROM ${Playlist.name.toLowerCase()}s WHERE "deletedAt" IS NOT NULL`,
             );
 
-            // Hapus audio yang dihapus
-            const audiosToDelete: { id: number }[] = await queryRunner.query(
-                `SELECT id FROM ${Audio.name.toLowerCase()}s WHERE "deletedAt" IS NOT NULL`,
-            );
+            /* DELETE AUDIO FROM DB AND AMAZON S3 */
+            const audiosToDelete: { id: number; s3_key: string }[] =
+                await queryRunner.query(
+                    `SELECT id, s3_key FROM ${Audio.name.toLowerCase()}s WHERE "deletedAt" IS NOT NULL`,
+                );
 
             await queryRunner.query(
                 `DELETE FROM ${Audio.name.toLowerCase()}s WHERE "deletedAt" IS NOT NULL`,
             );
 
-            // Hapus user yang dihapus
+            const fileKeys = audiosToDelete.map((audio) => audio.s3_key);
+            if (fileKeys.length > 0) {
+                console.log(`Deleting ${fileKeys.length} files from S3...`);
+                await this.s3Service.deleteFilesBatch(fileKeys);
+            }
+
             const usersToDelete: { id: number }[] = await queryRunner.query(
                 `SELECT id FROM ${User.name.toLowerCase()}s WHERE "deletedAt" IS NOT NULL`,
             );

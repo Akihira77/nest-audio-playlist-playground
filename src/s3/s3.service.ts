@@ -5,6 +5,7 @@ import {
     GetObjectCommand,
     HeadObjectCommand,
     DeleteObjectCommand,
+    DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
 import { Readable } from "stream";
 
@@ -76,6 +77,28 @@ export class S3Service {
         } catch (error) {
             console.error("Error deleting file from S3:", error);
             return false;
+        }
+    }
+
+    async deleteFilesBatch(keys: string[]): Promise<void> {
+        if (keys.length === 0) return;
+
+        try {
+            const objectsToDelete = keys.map((key) => ({ Key: key }));
+
+            const command = new DeleteObjectsCommand({
+                Bucket: process.env.S3_BUCKET_NAME,
+                Delete: { Objects: objectsToDelete },
+            });
+
+            const response = await this.s3Client.send(command);
+            console.log(
+                "Batch delete response:",
+                response.Deleted?.length,
+                "files deleted",
+            );
+        } catch (error) {
+            console.error("Failed to delete files in batch from S3", error);
         }
     }
 }

@@ -11,6 +11,8 @@ import { CustomCacheModule } from "./cache/cache.module.js";
 import { ScheduleModule } from "@nestjs/schedule";
 import { CleanupJobService } from "./cleanup-job/cleanup-job.service.js";
 import { AuthModule } from "./auth/auth.module.js";
+import { S3Service } from "./s3/s3.service.js";
+import { S3Module } from "./s3/s3.module.js";
 
 @Module({
     imports: [
@@ -33,6 +35,7 @@ import { AuthModule } from "./auth/auth.module.js";
         UserModule,
         AudioModule,
         PlaylistModule,
+        S3Module,
 
         //INFO: Background Module
         ScheduleModule.forRoot(),
