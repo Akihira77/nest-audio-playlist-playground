@@ -3,6 +3,7 @@ import {
     Controller,
     Delete,
     Get,
+    HttpException,
     HttpStatus,
     Inject,
     Param,
@@ -41,6 +42,12 @@ export class UserController {
             return res.status(HttpStatus.OK).json({ users });
         } catch (error) {
             console.error(`${this.findAll.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -67,6 +74,12 @@ export class UserController {
             return res.status(HttpStatus.OK).json({ user });
         } catch (error) {
             console.error(`${this.findUserById.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -110,6 +123,12 @@ export class UserController {
             return res.status(HttpStatus.OK).json({ user: user, token: token });
         } catch (error) {
             console.error(`${this.register.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -145,6 +164,12 @@ export class UserController {
             return res.status(HttpStatus.OK).json({ user });
         } catch (error) {
             console.error(`${this.getMyInfo.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -184,6 +209,12 @@ export class UserController {
             return res.status(HttpStatus.OK).json({ user: u, token: token });
         } catch (error) {
             console.error(`${this.login.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -215,6 +246,12 @@ export class UserController {
             return res.status(HttpStatus.OK).json({ user: user });
         } catch (error) {
             console.error(`${this.updateName.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -259,6 +296,12 @@ export class UserController {
             return res.status(HttpStatus.OK).json({ user: user });
         } catch (error) {
             console.error(`${this.changePassword.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -283,6 +326,12 @@ export class UserController {
             return res.sendStatus(HttpStatus.NO_CONTENT);
         } catch (error) {
             console.error(`${this.deleteMyAccount.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }

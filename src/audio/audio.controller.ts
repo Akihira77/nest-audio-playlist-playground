@@ -54,6 +54,12 @@ export class AudioController {
             return res.status(HttpStatus.OK).json({ audios: audios });
         } catch (error) {
             console.error(`${this.findAll.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -80,6 +86,12 @@ export class AudioController {
             return res.status(HttpStatus.OK).json({ audios: audios });
         } catch (error) {
             console.error(`${this.audiosQuerySearch.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -98,6 +110,12 @@ export class AudioController {
             return res.status(HttpStatus.OK).json({ audios: audios });
         } catch (error) {
             console.error(`${this.findAll.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -176,6 +194,12 @@ export class AudioController {
             partialStream.pipe(res);
         } catch (error) {
             console.error(`${this.playAudio.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -202,6 +226,12 @@ export class AudioController {
             return res.status(HttpStatus.OK).json({ audio: audio });
         } catch (error) {
             console.error(`${this.findAudioById.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -257,6 +287,12 @@ export class AudioController {
             });
         } catch (error) {
             console.error(`${this.upload.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -332,6 +368,12 @@ export class AudioController {
             });
         } catch (error) {
             console.error(`${this.updateMyAudio.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -357,6 +399,12 @@ export class AudioController {
             });
         } catch (error) {
             console.error(`${this.editLike.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -390,6 +438,12 @@ export class AudioController {
             });
         } catch (error) {
             console.error(`${this.deleteMyAudio.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }

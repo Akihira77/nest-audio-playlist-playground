@@ -41,6 +41,12 @@ export class PlaylistController {
             return res.status(HttpStatus.OK).json({ playlists });
         } catch (error) {
             console.error(`${this.findAllMyPlaylists.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -63,6 +69,12 @@ export class PlaylistController {
             return res.status(HttpStatus.OK).json({ playlist: result });
         } catch (error) {
             console.error(`${this.openAPlaylist.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -85,6 +97,12 @@ export class PlaylistController {
             return res.status(HttpStatus.CREATED).json({ playlist: result });
         } catch (error) {
             console.error(`${this.create.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -109,6 +127,12 @@ export class PlaylistController {
             return res.status(HttpStatus.OK).json({ playlist: result });
         } catch (error) {
             console.error(`${this.editPlaylistMetadata.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -167,6 +191,12 @@ export class PlaylistController {
                 .send("Success removing audio in a playlist");
         } catch (error) {
             console.error(`${this.removeAudioInPlaylist.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }
@@ -192,6 +222,12 @@ export class PlaylistController {
                 .send("Success deleting a playlist");
         } catch (error) {
             console.error(`${this.addAudioInPlaylist.name} error`, error);
+            if (error instanceof HttpException) {
+                return res
+                    .status(error.getStatus())
+                    .json({ stack_trace: error.stack, error: error.message });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }

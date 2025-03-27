@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { UploadAudioDTO, Audio } from "./types.js";
 import { PathLike } from "fs";
 import { unlink } from "fs/promises";
@@ -83,6 +83,13 @@ export class AudioService implements IAudioService {
                 where: { id: audioId, deletedAt: IsNull() },
                 lock: { mode: "pessimistic_write" },
             });
+
+            if (audio == null) {
+                throw new HttpException(
+                    "Audio not found",
+                    HttpStatus.NOT_FOUND,
+                );
+            }
 
             audio.likes += num;
             await queryRunner.manager.save(Audio, audio);
