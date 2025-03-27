@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { UploadAudioDTO, Audio } from "./types.js";
 import { PathLike } from "fs";
 import { unlink } from "fs/promises";
-import { ILike, Repository } from "typeorm";
+import { ILike, IsNull, Repository } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "../user/types.js";
 
@@ -41,8 +41,8 @@ export class AudioService implements IAudioService {
         try {
             return await this.audioRepository.find({
                 where: [
-                    { title: ILike(`%${query}%`), deletedAt: null },
-                    { creator: ILike(`%${query}%`), deletedAt: null },
+                    { title: ILike(`%${query}%`), deletedAt: IsNull() },
+                    { creator: ILike(`%${query}%`), deletedAt: IsNull() },
                 ],
                 select: { file_path: false },
             });
@@ -55,14 +55,14 @@ export class AudioService implements IAudioService {
     findAll(): Promise<Audio[]> {
         return this.audioRepository.find({
             select: { file_path: false },
-            where: { deletedAt: null },
+            where: { deletedAt: IsNull() },
         });
     }
 
     findAllByUserId(userId: number): Promise<Audio[]> {
         try {
             return this.audioRepository.find({
-                where: { uploader: { id: userId }, deletedAt: null },
+                where: { uploader: { id: userId }, deletedAt: IsNull() },
                 relations: ["uploader"],
             });
         } catch (error) {
@@ -80,7 +80,7 @@ export class AudioService implements IAudioService {
             await queryRunner.startTransaction("READ COMMITTED");
 
             const audio = await queryRunner.manager.findOne(Audio, {
-                where: { id: audioId, deletedAt: null },
+                where: { id: audioId, deletedAt: IsNull() },
                 lock: { mode: "pessimistic_write" },
             });
 
@@ -99,7 +99,9 @@ export class AudioService implements IAudioService {
     }
 
     async findAudioById(id: number): Promise<Audio | undefined> {
-        return this.audioRepository.findOne({ where: { id, deletedAt: null } });
+        return this.audioRepository.findOne({
+            where: { id, deletedAt: IsNull() },
+        });
     }
 
     async findMyAudio(
@@ -112,7 +114,7 @@ export class AudioService implements IAudioService {
                 uploader: {
                     id: uploaderId,
                 },
-                deletedAt: null,
+                deletedAt: IsNull(),
             },
         });
     }
@@ -142,7 +144,7 @@ export class AudioService implements IAudioService {
                 publishAt: data.publishAt,
             });
             return this.audioRepository.findOne({
-                where: { id: audioId, deletedAt: null },
+                where: { id: audioId, deletedAt: IsNull() },
             });
         } catch (error) {
             this.logError(this.update.name, error);

@@ -59,7 +59,10 @@ export class Audio {
     @Column({ type: "int", default: 0 })
     likes: number;
 
-    @ManyToOne(() => User, (user) => user.audios)
+    @ManyToOne(() => User, (user) => user.audios, {
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
+    })
     uploader: Promise<User>;
 
     @ManyToMany(() => Playlist, (playlist) => playlist.audios)

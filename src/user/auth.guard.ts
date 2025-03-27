@@ -8,7 +8,7 @@ import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
 import { InjectRepository } from "@nestjs/typeorm";
 import { User } from "./types.js";
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -36,7 +36,7 @@ export class AuthGuard implements CanActivate {
 
             const user = await this.userRepository.findOneBy({
                 id: payload.userId,
-                deletedAt: null,
+                deletedAt: IsNull(),
             });
 
             if (user == null) {

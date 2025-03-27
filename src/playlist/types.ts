@@ -40,7 +40,10 @@ export class Playlist {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @ManyToOne(() => User, (user) => user.playlists)
+    @ManyToOne(() => User, (user) => user.playlists, {
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
+    })
     user: Promise<User>;
 
     @Column({ type: "varchar", length: 255 })

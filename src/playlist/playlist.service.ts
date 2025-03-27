@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { CreatePlaylistDTO, Playlist } from "./types.js";
 import { Audio } from "../audio/types.js";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -90,12 +90,12 @@ export class PlaylistService implements IPlaylistService {
                 where: {
                     id: playlistId,
                     user: { id: userId },
-                    deletedAt: null,
+                    deletedAt: IsNull(),
                 },
                 relations: ["audios"],
             });
             const audio = await queryRunner.manager.findOne(Audio, {
-                where: { id: audioId, deletedAt: null },
+                where: { id: audioId, deletedAt: IsNull() },
             });
 
             if (audio == null) {
@@ -164,7 +164,7 @@ export class PlaylistService implements IPlaylistService {
             await queryRunner.commitTransaction();
 
             return await queryRunner.manager.findOne(Playlist, {
-                where: { id: playlistId, deletedAt: null },
+                where: { id: playlistId, deletedAt: IsNull() },
             });
         } catch (error) {
             await queryRunner.rollbackTransaction();
@@ -178,7 +178,7 @@ export class PlaylistService implements IPlaylistService {
     findMyPlaylists(userId: number): Promise<Playlist[]> {
         try {
             return this.playlistRepository.find({
-                where: { user: { id: userId }, deletedAt: null },
+                where: { user: { id: userId }, deletedAt: IsNull() },
                 relations: ["user"],
             });
         } catch (error) {
@@ -193,7 +193,7 @@ export class PlaylistService implements IPlaylistService {
                 where: {
                     id: playlistId,
                     audios: {
-                        deletedAt: null,
+                        deletedAt: IsNull(),
                     },
                 },
                 relations: ["audios"],
@@ -231,7 +231,7 @@ export class PlaylistService implements IPlaylistService {
             await queryRunner.startTransaction("SERIALIZABLE");
 
             const playlist = await queryRunner.manager.findOne(Playlist, {
-                where: { id: playlistId, deletedAt: null },
+                where: { id: playlistId, deletedAt: IsNull() },
                 relations: ["audios"],
                 lock: { mode: "pessimistic_write" },
             });

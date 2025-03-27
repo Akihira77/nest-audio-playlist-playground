@@ -24,7 +24,7 @@ import { AuthModule } from "./auth/auth.module.js";
             password: process.env.POSTGRES_PASSWORD,
             database: process.env.POSTGRES_DATABASE,
             entities: [User, Audio, Playlist],
-            synchronize: false,
+            synchronize: true,
             logging: ["query", "error"],
         }),
 

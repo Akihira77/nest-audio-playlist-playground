@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { hashString } from "../util/bcrypt.js";
 import { RegisterDto, User } from "./types.js";
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
 
 export interface IUserService {
@@ -41,6 +41,7 @@ export class UserService implements IUserService {
     public async findAll(): Promise<User[]> {
         try {
             return await this.userRepository.find({
+                where: { deletedAt: IsNull() },
                 select: ["id", "name", "email", "createdAt"],
             });
         } catch (error) {
@@ -52,8 +53,7 @@ export class UserService implements IUserService {
     public async findUserByIdExcPassword(id: number): Promise<User | null> {
         try {
             return await this.userRepository.findOne({
-                where: { id, deletedAt: null },
-                select: ["id", "name", "email", "createdAt"],
+                where: { id, deletedAt: IsNull() },
             });
         } catch (error) {
             console.error(`${this.findUserByIdExcPassword.name} error`, error);
@@ -64,7 +64,7 @@ export class UserService implements IUserService {
     public async findRawUserById(id: number): Promise<User | undefined> {
         try {
             return await this.userRepository.findOne({
-                where: { id, deletedAt: null },
+                where: { id, deletedAt: IsNull() },
             });
         } catch (error) {
             console.error(`${this.findRawUserById.name} error`, error);
@@ -75,7 +75,7 @@ export class UserService implements IUserService {
     public async findRawUserByEmail(email: string): Promise<User | undefined> {
         try {
             return await this.userRepository.findOne({
-                where: { email, deletedAt: null },
+                where: { email, deletedAt: IsNull() },
             });
         } catch (error) {
             console.error(`${this.findRawUserByEmail.name} error`, error);
@@ -109,7 +109,7 @@ export class UserService implements IUserService {
             await this.userRepository.update(id, { name });
 
             return await this.userRepository.findOne({
-                where: { id, deletedAt: null },
+                where: { id, deletedAt: IsNull() },
                 select: ["id", "name", "email", "createdAt"],
             });
         } catch (error) {
@@ -127,7 +127,7 @@ export class UserService implements IUserService {
             await this.userRepository.update(id, { password: hashedPassword });
 
             return await this.userRepository.findOne({
-                where: { id, deletedAt: null },
+                where: { id, deletedAt: IsNull() },
                 select: ["id", "name", "email", "createdAt"],
             });
         } catch (error) {
