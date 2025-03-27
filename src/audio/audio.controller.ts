@@ -389,23 +389,11 @@ export class AudioController {
                 return res.status(HttpStatus.NOT_FOUND).send("Audio not found");
             }
 
-            const result = await this.audioService.delete(
-                audio.id,
-                path.join(this.uploadDir, audio.file_path),
-            );
+            const result = await this.audioService.delete(audio.id);
             if (!result) {
                 return res
                     .status(HttpStatus.BAD_REQUEST)
                     .send("Error deleting audio");
-            }
-
-            const s3DeleteResult = await this.s3Service.deleteFile(
-                audio.s3_key,
-            );
-            if (!s3DeleteResult) {
-                return res
-                    .status(HttpStatus.BAD_REQUEST)
-                    .send("Error deleting file from S3");
             }
 
             await this.cacheService.delete(`audio_${audioId}`);

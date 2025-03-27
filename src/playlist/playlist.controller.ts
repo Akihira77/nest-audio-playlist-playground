@@ -52,9 +52,7 @@ export class PlaylistController {
     ): Promise<Response> {
         try {
             const result =
-                await this.playlistService.findMyPlaylistPreloadAudios(
-                    playlistId,
-                );
+                await this.playlistService.findPlaylistById(playlistId);
 
             if (!result) {
                 return res
@@ -71,11 +69,15 @@ export class PlaylistController {
 
     @Post("")
     public async create(
+        @User() currentUser: { userId: number; name: string },
         @Body() data: CreatePlaylistDTO,
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const result = await this.playlistService.create(data);
+            const result = await this.playlistService.create(
+                currentUser.userId,
+                data,
+            );
             if (!result) {
                 throw new Error("Failed creating playlist");
             }
@@ -89,12 +91,14 @@ export class PlaylistController {
 
     @Patch(":playlistId")
     public async editPlaylistMetadata(
+        @User() currentUser: { userId: number; name: string },
         @Param("playlistId", ParseIntPipe) playlistId: number,
         @Body() data: CreatePlaylistDTO,
         @Res() res: Response,
     ): Promise<Response> {
         try {
             const result = await this.playlistService.editPlaylistMetadata(
+                currentUser.userId,
                 playlistId,
                 data,
             );
@@ -111,11 +115,13 @@ export class PlaylistController {
 
     @Post("add")
     public async addAudioInPlaylist(
+        @User() currentUser: { userId: number; name: string },
         @Query() query: { playlistId: number; audioId: number },
         @Res() res: Response,
     ): Promise<Response> {
         try {
             const result = await this.playlistService.addAudioInPlaylist(
+                currentUser.userId,
                 query.playlistId,
                 query.audioId,
             );
@@ -141,11 +147,13 @@ export class PlaylistController {
 
     @Delete("remove")
     public async removeAudioInPlaylist(
+        @User() currentUser: { userId: number; name: string },
         @Query() query: { playlistId: number; audioId: number },
         @Res() res: Response,
     ): Promise<Response> {
         try {
             const result = await this.playlistService.removeAudioInPlaylist(
+                currentUser.userId,
                 query.playlistId,
                 query.audioId,
             );
@@ -165,12 +173,15 @@ export class PlaylistController {
 
     @Delete(":playlistId")
     public async deleteMyPlaylist(
+        @User() currentUser: { userId: number; name: string },
         @Param("playlistId", ParseIntPipe) playlistId: number,
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            const result =
-                await this.playlistService.deletePlaylist(playlistId);
+            const result = await this.playlistService.deletePlaylist(
+                currentUser.userId,
+                playlistId,
+            );
 
             if (!result) {
                 throw new Error("Failed deleting a playlist");

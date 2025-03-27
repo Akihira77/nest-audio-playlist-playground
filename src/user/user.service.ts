@@ -25,7 +25,12 @@ export class UserService implements IUserService {
 
     public async delete(userId: number): Promise<boolean> {
         try {
-            const res = await this.userRepository.delete(userId);
+            const res = await this.userRepository.update(
+                { id: userId },
+                {
+                    deletedAt: new Date(),
+                },
+            );
             return res.affected > 0;
         } catch (error) {
             console.error(`${this.delete.name} error`, error);
@@ -47,7 +52,7 @@ export class UserService implements IUserService {
     public async findUserByIdExcPassword(id: number): Promise<User | null> {
         try {
             return await this.userRepository.findOne({
-                where: { id },
+                where: { id, deletedAt: null },
                 select: ["id", "name", "email", "createdAt"],
             });
         } catch (error) {
@@ -58,7 +63,9 @@ export class UserService implements IUserService {
 
     public async findRawUserById(id: number): Promise<User | undefined> {
         try {
-            return await this.userRepository.findOne({ where: { id } });
+            return await this.userRepository.findOne({
+                where: { id, deletedAt: null },
+            });
         } catch (error) {
             console.error(`${this.findRawUserById.name} error`, error);
             return undefined;
@@ -67,7 +74,9 @@ export class UserService implements IUserService {
 
     public async findRawUserByEmail(email: string): Promise<User | undefined> {
         try {
-            return await this.userRepository.findOne({ where: { email } });
+            return await this.userRepository.findOne({
+                where: { email, deletedAt: null },
+            });
         } catch (error) {
             console.error(`${this.findRawUserByEmail.name} error`, error);
             return undefined;
@@ -100,7 +109,7 @@ export class UserService implements IUserService {
             await this.userRepository.update(id, { name });
 
             return await this.userRepository.findOne({
-                where: { id },
+                where: { id, deletedAt: null },
                 select: ["id", "name", "email", "createdAt"],
             });
         } catch (error) {
@@ -118,7 +127,7 @@ export class UserService implements IUserService {
             await this.userRepository.update(id, { password: hashedPassword });
 
             return await this.userRepository.findOne({
-                where: { id },
+                where: { id, deletedAt: null },
                 select: ["id", "name", "email", "createdAt"],
             });
         } catch (error) {

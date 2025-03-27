@@ -12,7 +12,7 @@ export interface IAudioService {
         audioId: number,
         data: UploadAudioDTO | Audio,
     ): Promise<Audio | undefined>;
-    delete(audioId: number, filePath: PathLike): Promise<boolean>;
+    delete(audioId: number): Promise<boolean>;
     removeFile(filePath: PathLike): Promise<void>;
     findAudioById(id: number): Promise<Audio | undefined>;
     findMyAudio(
@@ -41,8 +41,8 @@ export class AudioService implements IAudioService {
         try {
             return await this.audioRepository.find({
                 where: [
-                    { title: ILike(`%${query}%`) },
-                    { creator: ILike(`%${query}%`) },
+                    { title: ILike(`%${query}%`), deletedAt: null },
+                    { creator: ILike(`%${query}%`), deletedAt: null },
                 ],
                 select: { file_path: false },
             });
@@ -53,7 +53,10 @@ export class AudioService implements IAudioService {
     }
 
     findAll(): Promise<Audio[]> {
-        return this.audioRepository.find({ select: { file_path: false } });
+        return this.audioRepository.find({
+            select: { file_path: false },
+            where: { deletedAt: null },
+        });
     }
 
     async findAllByUserId(userId: number): Promise<Audio[]> {
@@ -62,6 +65,7 @@ export class AudioService implements IAudioService {
                 uploader: {
                     id: userId,
                 },
+                deletedAt: null,
             },
             select: { file_path: false },
         });
@@ -76,7 +80,7 @@ export class AudioService implements IAudioService {
             await queryRunner.startTransaction("READ COMMITTED");
 
             const audio = await queryRunner.manager.findOne(Audio, {
-                where: { id: audioId },
+                where: { id: audioId, deletedAt: null },
                 lock: { mode: "pessimistic_write" },
             });
 
@@ -95,7 +99,7 @@ export class AudioService implements IAudioService {
     }
 
     async findAudioById(id: number): Promise<Audio | undefined> {
-        return this.audioRepository.findOne({ where: { id } });
+        return this.audioRepository.findOne({ where: { id, deletedAt: null } });
     }
 
     async findMyAudio(
@@ -108,6 +112,7 @@ export class AudioService implements IAudioService {
                 uploader: {
                     id: uploaderId,
                 },
+                deletedAt: null,
             },
         });
     }
@@ -136,19 +141,21 @@ export class AudioService implements IAudioService {
                 file_path: data.file_path,
                 publishAt: data.publishAt,
             });
-            return this.audioRepository.findOne({ where: { id: audioId } });
+            return this.audioRepository.findOne({
+                where: { id: audioId, deletedAt: null },
+            });
         } catch (error) {
             this.logError(this.update.name, error);
             return undefined;
         }
     }
 
-    async delete(audioId: number, filePath: PathLike): Promise<boolean> {
+    async delete(audioId: number): Promise<boolean> {
         try {
-            const result = await this.audioRepository.delete({ id: audioId });
-            if (result.affected > 0) {
-                await this.removeFile(filePath);
-            }
+            const result = await this.audioRepository.update(
+                { id: audioId },
+                { deletedAt: new Date() },
+            );
 
             return result.affected > 0;
         } catch (error) {

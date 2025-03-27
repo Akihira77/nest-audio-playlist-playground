@@ -3,21 +3,28 @@ import { Repository } from "typeorm";
 import { CreatePlaylistDTO, Playlist } from "./types.js";
 import { Audio } from "../audio/types.js";
 import { InjectRepository } from "@nestjs/typeorm";
+import { User } from "../user/types.js";
 
 export interface IPlaylistService {
-    create(data: CreatePlaylistDTO): Promise<Playlist>;
-    addAudioInPlaylist(playlistId: number, audioId: number): Promise<Playlist>;
+    create(userId: number, data: CreatePlaylistDTO): Promise<Playlist>;
+    addAudioInPlaylist(
+        userId: number,
+        playlistId: number,
+        audioId: number,
+    ): Promise<Playlist>;
     editPlaylistMetadata(
+        userId: number,
         playlistId: number,
         data: CreatePlaylistDTO,
     ): Promise<Playlist>;
     findMyPlaylists(userId: number): Promise<Playlist[]>;
-    findMyPlaylistPreloadAudios(playlistId: number): Promise<Playlist | null>;
+    findPlaylistById(playlistId: number): Promise<Playlist | null>;
     removeAudioInPlaylist(
+        userId: number,
         playlistId: number,
         audioId: number,
     ): Promise<boolean>;
-    deletePlaylist(playlistId: number): Promise<boolean>;
+    deletePlaylist(userId: number, playlistId: number): Promise<boolean>;
 }
 
 export const SPlaylistService = Symbol("IPlaylistService");
@@ -27,15 +34,25 @@ export class PlaylistService implements IPlaylistService {
     constructor(
         @InjectRepository(Playlist)
         private readonly playlistRepository: Repository<Playlist>,
+        @InjectRepository(User)
+        private readonly userRepository: Repository<User>,
     ) {}
 
-    async create(data: CreatePlaylistDTO): Promise<Playlist> {
+    async create(userId: number, data: CreatePlaylistDTO): Promise<Playlist> {
         try {
+            const user = await this.userRepository.findOneBy({ id: userId });
+            if (user == null) {
+                throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+            }
+
             const playlist = this.playlistRepository.create({
                 name: data.name,
                 isPublic: data.isPublic,
                 audioCount: 0,
             });
+
+            playlist.user = Promise.resolve(user);
+
             return await this.playlistRepository.save(playlist);
         } catch (error) {
             console.error(`${this.create.name} error`, error);
@@ -44,9 +61,24 @@ export class PlaylistService implements IPlaylistService {
     }
 
     async addAudioInPlaylist(
+        userId: number,
         playlistId: number,
         audioId: number,
     ): Promise<Playlist> {
+        const playlist = await this.findPlaylistById(playlistId);
+
+        if (playlist == null) {
+            throw new HttpException("Playlist not found", HttpStatus.NOT_FOUND);
+        }
+
+        const uploader = await playlist.user;
+        if (!playlist.isPublic && uploader.id != userId) {
+            throw new HttpException(
+                "This is private playlist only creator could modifying this playlist",
+                HttpStatus.FORBIDDEN,
+            );
+        }
+
         const queryRunner =
             this.playlistRepository.manager.connection.createQueryRunner();
         await queryRunner.connect();
@@ -55,16 +87,20 @@ export class PlaylistService implements IPlaylistService {
             await queryRunner.startTransaction();
 
             const playlist = await queryRunner.manager.findOne(Playlist, {
-                where: { id: playlistId },
+                where: {
+                    id: playlistId,
+                    user: { id: userId },
+                    deletedAt: null,
+                },
                 relations: ["audios"],
             });
             const audio = await queryRunner.manager.findOne(Audio, {
-                where: { id: audioId },
+                where: { id: audioId, deletedAt: null },
             });
 
-            if (!playlist || !audio) {
+            if (audio == null) {
                 throw new HttpException(
-                    "Playlist or audio not found",
+                    "Audio not found",
                     HttpStatus.NOT_FOUND,
                 );
             }
@@ -94,9 +130,24 @@ export class PlaylistService implements IPlaylistService {
         }
     }
     async editPlaylistMetadata(
+        userId: number,
         playlistId: number,
         data: CreatePlaylistDTO,
     ): Promise<Playlist | undefined> {
+        const playlist = await this.findPlaylistById(playlistId);
+
+        if (playlist == null) {
+            throw new HttpException("Playlist not found", HttpStatus.NOT_FOUND);
+        }
+
+        const uploader = await playlist.user;
+        if (!playlist.isPublic && uploader.id != userId) {
+            throw new HttpException(
+                "This is private playlist only creator could modifying this playlist",
+                HttpStatus.FORBIDDEN,
+            );
+        }
+
         const queryRunner =
             this.playlistRepository.manager.connection.createQueryRunner();
         await queryRunner.connect();
@@ -113,7 +164,7 @@ export class PlaylistService implements IPlaylistService {
             await queryRunner.commitTransaction();
 
             return await queryRunner.manager.findOne(Playlist, {
-                where: { id: playlistId },
+                where: { id: playlistId, deletedAt: null },
             });
         } catch (error) {
             await queryRunner.rollbackTransaction();
@@ -127,7 +178,7 @@ export class PlaylistService implements IPlaylistService {
     async findMyPlaylists(userId: number): Promise<Playlist[]> {
         try {
             return await this.playlistRepository.find({
-                where: { id: userId },
+                where: { user: { id: userId }, deletedAt: null },
             });
         } catch (error) {
             console.error(`${this.findMyPlaylists.name} error`, error);
@@ -135,31 +186,45 @@ export class PlaylistService implements IPlaylistService {
         }
     }
 
-    async findMyPlaylistPreloadAudios(
-        playlistId: number,
-    ): Promise<Playlist | null> {
+    async findPlaylistById(playlistId: number): Promise<Playlist | null> {
         try {
-            const playlist = await this.playlistRepository.findOne({
-                where: {
-                    id: playlistId,
-                },
-                relations: ["audios"],
-            });
+            const playlist = await this.playlistRepository
+                .createQueryBuilder(Playlist.name.toLowerCase())
+                .leftJoinAndSelect(
+                    "playlist.audios",
+                    "audio",
+                    "audio.deletedAt IS NULL",
+                )
+                .where("playlist.id = :playlistId", { playlistId })
+                .andWhere("playlist.deletedAt IS NULL")
+                .getOne();
 
             return playlist;
         } catch (error) {
-            console.error(
-                `${this.findMyPlaylistPreloadAudios.name} error`,
-                error,
-            );
+            console.error(`${this.findPlaylistById.name} error`, error);
             return undefined;
         }
     }
 
     async removeAudioInPlaylist(
+        userId: number,
         playlistId: number,
         audioId: number,
     ): Promise<boolean> {
+        const playlist = await this.findPlaylistById(playlistId);
+
+        if (playlist == null) {
+            throw new HttpException("Playlist not found", HttpStatus.NOT_FOUND);
+        }
+
+        const uploader = await playlist.user;
+        if (!playlist.isPublic && uploader.id != userId) {
+            throw new HttpException(
+                "This is private playlist only creator could modifying this playlist",
+                HttpStatus.FORBIDDEN,
+            );
+        }
+
         const queryRunner =
             this.playlistRepository.manager.connection.createQueryRunner();
         await queryRunner.connect();
@@ -168,12 +233,10 @@ export class PlaylistService implements IPlaylistService {
             await queryRunner.startTransaction("SERIALIZABLE");
 
             const playlist = await queryRunner.manager.findOne(Playlist, {
-                where: { id: playlistId },
+                where: { id: playlistId, deletedAt: null },
                 relations: ["audios"],
                 lock: { mode: "pessimistic_write" },
             });
-
-            if (!playlist) throw new Error("Playlist not found");
 
             let audios = await playlist.audios;
             audios = audios.filter((audio) => audio.id != audioId);
@@ -193,7 +256,21 @@ export class PlaylistService implements IPlaylistService {
         }
     }
 
-    async deletePlaylist(playlistId: number): Promise<boolean> {
+    async deletePlaylist(userId: number, playlistId: number): Promise<boolean> {
+        const playlist = await this.findPlaylistById(playlistId);
+
+        if (playlist == null) {
+            throw new HttpException("Playlist not found", HttpStatus.NOT_FOUND);
+        }
+
+        const uploader = await playlist.user;
+        if (!playlist.isPublic && uploader.id != userId) {
+            throw new HttpException(
+                "This is private playlist only creator could modifying this playlist",
+                HttpStatus.FORBIDDEN,
+            );
+        }
+
         const queryRunner =
             this.playlistRepository.manager.connection.createQueryRunner();
         await queryRunner.connect();
@@ -201,9 +278,13 @@ export class PlaylistService implements IPlaylistService {
         try {
             await queryRunner.startTransaction("SERIALIZABLE");
 
-            const result = await queryRunner.manager.delete(Playlist, {
-                id: playlistId,
-            });
+            const result = await queryRunner.manager.update(
+                Playlist,
+                {
+                    id: playlistId,
+                },
+                { deletedAt: new Date() },
+            );
 
             await queryRunner.commitTransaction();
             return result.affected > 0;
