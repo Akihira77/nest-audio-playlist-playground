@@ -17,7 +17,7 @@ import { Response } from "express";
 import { RegisterDto, LoginDto } from "./types.js";
 import { matchingString } from "../util/bcrypt.js";
 import { JwtService } from "@nestjs/jwt";
-import { AuthGuard } from "./auth.guard.js";
+import { AuthGuard } from "../auth/auth.guard.js";
 import { User } from "../util/decorator.js";
 import { CacheService } from "../cache/cache.service.js";
 

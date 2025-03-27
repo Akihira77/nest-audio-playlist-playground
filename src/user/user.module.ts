@@ -5,10 +5,12 @@ import { SUserService, UserService } from "./user.service.js";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "./types.js";
 import { CustomCacheModule } from "../cache/cache.module.js";
+import { AuthModule } from "../auth/auth.module.js";
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([User]),
+        AuthModule,
         CustomCacheModule,
         JwtModule.register({
             global: true,

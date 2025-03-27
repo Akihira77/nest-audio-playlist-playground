@@ -4,6 +4,7 @@ import { PlaylistController } from "./playlist.controller.js";
 import { Playlist } from "./types.js";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "../user/types.js";
+import { AuthModule } from "../auth/auth.module.js";
 
 @Module({
     controllers: [PlaylistController],
@@ -13,6 +14,6 @@ import { User } from "../user/types.js";
             useClass: PlaylistService,
         },
     ],
-    imports: [TypeOrmModule.forFeature([Playlist, User])],
+    imports: [AuthModule, TypeOrmModule.forFeature([Playlist, User])],
 })
 export class PlaylistModule {}

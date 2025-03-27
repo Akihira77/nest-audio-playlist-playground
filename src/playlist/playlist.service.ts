@@ -175,31 +175,29 @@ export class PlaylistService implements IPlaylistService {
         }
     }
 
-    async findMyPlaylists(userId: number): Promise<Playlist[]> {
+    findMyPlaylists(userId: number): Promise<Playlist[]> {
         try {
-            return await this.playlistRepository.find({
+            return this.playlistRepository.find({
                 where: { user: { id: userId }, deletedAt: null },
+                relations: ["user"],
             });
         } catch (error) {
             console.error(`${this.findMyPlaylists.name} error`, error);
-            return [];
+            return Promise.resolve([]);
         }
     }
 
-    async findPlaylistById(playlistId: number): Promise<Playlist | null> {
+    findPlaylistById(playlistId: number): Promise<Playlist | null> {
         try {
-            const playlist = await this.playlistRepository
-                .createQueryBuilder(Playlist.name.toLowerCase())
-                .leftJoinAndSelect(
-                    "playlist.audios",
-                    "audio",
-                    "audio.deletedAt IS NULL",
-                )
-                .where("playlist.id = :playlistId", { playlistId })
-                .andWhere("playlist.deletedAt IS NULL")
-                .getOne();
-
-            return playlist;
+            return this.playlistRepository.findOne({
+                where: {
+                    id: playlistId,
+                    audios: {
+                        deletedAt: null,
+                    },
+                },
+                relations: ["audios"],
+            });
         } catch (error) {
             console.error(`${this.findPlaylistById.name} error`, error);
             return undefined;

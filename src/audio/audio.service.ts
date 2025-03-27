@@ -59,16 +59,16 @@ export class AudioService implements IAudioService {
         });
     }
 
-    async findAllByUserId(userId: number): Promise<Audio[]> {
-        return this.audioRepository.find({
-            where: {
-                uploader: {
-                    id: userId,
-                },
-                deletedAt: null,
-            },
-            select: { file_path: false },
-        });
+    findAllByUserId(userId: number): Promise<Audio[]> {
+        try {
+            return this.audioRepository.find({
+                where: { uploader: { id: userId }, deletedAt: null },
+                relations: ["uploader"],
+            });
+        } catch (error) {
+            this.logError(this.findAllByUserId.name, error);
+            throw error;
+        }
     }
 
     async editLike(audioId: number, num: number): Promise<Audio> {

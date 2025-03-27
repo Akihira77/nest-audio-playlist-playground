@@ -10,6 +10,7 @@ import { Playlist } from "./playlist/types.js";
 import { CustomCacheModule } from "./cache/cache.module.js";
 import { ScheduleModule } from "@nestjs/schedule";
 import { CleanupJobService } from "./cleanup-job/cleanup-job.service.js";
+import { AuthModule } from "./auth/auth.module.js";
 
 @Module({
     imports: [
@@ -28,6 +29,7 @@ import { CleanupJobService } from "./cleanup-job/cleanup-job.service.js";
         }),
 
         //INFO: User Module
+        AuthModule,
         UserModule,
         AudioModule,
         PlaylistModule,

@@ -14,11 +14,11 @@ import {
     Res,
     UseGuards,
 } from "@nestjs/common";
-import { AuthGuard } from "../user/auth.guard.js";
 import { Response } from "express";
 import { CreatePlaylistDTO } from "./types.js";
 import { IPlaylistService, SPlaylistService } from "./playlist.service.js";
 import { User } from "../util/decorator.js";
+import { AuthGuard } from "../auth/auth.guard.js";
 
 @Controller("playlists")
 @UseGuards(AuthGuard)
@@ -62,7 +62,7 @@ export class PlaylistController {
 
             return res.status(HttpStatus.OK).json({ playlist: result });
         } catch (error) {
-            console.error(`${this.findAllMyPlaylists.name} error`, error);
+            console.error(`${this.openAPlaylist.name} error`, error);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
         }
     }

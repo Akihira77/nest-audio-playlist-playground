@@ -8,6 +8,8 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { Audio } from "../audio/types.js";
 import { CustomCacheModule } from "../cache/cache.module.js";
 import { S3Module } from "../s3/s3.module.js";
+import { AuthModule } from "../auth/auth.module.js";
+import { User } from "../user/types.js";
 
 @Module({
     controllers: [AudioController],
@@ -20,7 +22,7 @@ import { S3Module } from "../s3/s3.module.js";
     imports: [
         UserModule,
         CustomCacheModule,
-        TypeOrmModule.forFeature([Audio]),
+        TypeOrmModule.forFeature([Audio, User]),
         MulterModule.register({
             dest: "./uploads",
             storage: multer.memoryStorage(),
@@ -41,6 +43,7 @@ import { S3Module } from "../s3/s3.module.js";
             },
         }),
         S3Module,
+        AuthModule,
     ],
 })
 export class AudioModule {}

@@ -22,7 +22,7 @@ import {
 import { Response } from "express";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { parseBuffer } from "music-metadata";
-import { AuthGuard } from "../user/auth.guard.js";
+import { AuthGuard } from "../auth/auth.guard.js";
 import { IAudioService, SAudioService } from "./audio.service.js";
 import { UploadAudioDTO, Audio } from "./types.js";
 import { generateRandomFileName } from "../util/common.js";
@@ -91,19 +91,9 @@ export class AudioController {
         @Res() res: Response,
     ): Promise<Response> {
         try {
-            let audios = await this.cacheService.get(
-                `audios:user?${currentUser.userId}`,
+            const audios = await this.audioService.findAllByUserId(
+                currentUser.userId,
             );
-            if (audios == null) {
-                audios = await this.audioService.findAllByUserId(
-                    currentUser.userId,
-                );
-                await this.cacheService.set(
-                    `audios:user?${currentUser.userId}`,
-                    audios,
-                    0,
-                );
-            }
 
             return res.status(HttpStatus.OK).json({ audios: audios });
         } catch (error) {
@@ -190,7 +180,7 @@ export class AudioController {
         }
     }
 
-    @Get(":id")
+    @Get("id/:id")
     public async findAudioById(
         @Param("id", ParseIntPipe) id: number,
         @Res() res: Response,
