@@ -91,7 +91,23 @@ export class UserController {
             }
 
             await this.cacheService.set(`user_${user.id}`, user, 0);
-            return res.status(HttpStatus.CREATED).json({ user: user });
+
+            user.password = "";
+            const token = await this.jwtService.signAsync(
+                {
+                    userId: user.id,
+                    name: user.name,
+                },
+                {
+                    secret: process.env.JWT_SECRET,
+                    expiresIn: "1h",
+                    issuer: "Nest Audio Playlist Playground",
+                    algorithm: "HS256",
+                },
+            );
+
+            res.cookie("token", token);
+            return res.status(HttpStatus.OK).json({ user: user, token: token });
         } catch (error) {
             console.error(`${this.register.name} error`, error);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Error");
