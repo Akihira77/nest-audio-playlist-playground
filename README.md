@@ -1,3 +1,4 @@
+
 # Overview
 This is a Nest Audio Playlist Playground API. Build with NestJS (Typescript), TypeORM,
 PostgreSQL, Redis.
@@ -8,7 +9,7 @@ PostgreSQL, Redis.
 2. User can perform CRUD for audio  
     -- Create (Upload) an audio  
     -- Read audio all; by query; by audio id; play an audio  
-    -- Update audio metadata; title/creator  
+    -- Update audio metadata title/creator; update the file     
     -- Like/Dislike an audio  
     -- Delete audio
 3. User can perform CRUD for playlist  
@@ -26,10 +27,10 @@ Test this API by importing Postman collection within this project to your Postma
 
 # System Design
 ## Database Design
-<a href="https://ibb.co.com/whR96FZr"><img src="https://i.ibb.co.com/9HNFYkm3/image.png" alt="database-design" border="0"></a>
+<a href="https://ibb.co.com/0SrzcXm"><img src="https://i.ibb.co.com/2Qdpy6W/image.png" alt="image" border="0"></a>
 
 ## Project Architecture
-<a href="https://ibb.co.com/Z1w1vrw9"><img src="https://i.ibb.co.com/wrbr8qbt/image.png" alt="nest-project-architecture" border="0"></a>
+<a href="https://ibb.co.com/xqC83w3R"><img src="https://i.ibb.co.com/N2Vn7f7H/image.png" alt="image" border="0"></a>
 
 # Others
 ## Project Patterns
